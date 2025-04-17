@@ -13,6 +13,9 @@ struct TimetableDetailView: View {
     var defaultPeriod: Int
     var defaultPattern: Pattern
     
+    // 選択モード（コマを選択する場合trueに）
+    var selectMode: Bool
+    
     // 編集用の状態変数
     @State private var subjectName: String = ""
     @State private var classroom: String = ""
@@ -20,61 +23,127 @@ struct TimetableDetailView: View {
     @State private var textbook: String = ""
     @State private var selectedColor: String = "blue"
     
+    // コマ選択用の状態変数
+    @State private var selectedDay: Int
+    @State private var selectedPeriod: Int
+    
+    // 曜日と時限
+    private let daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"]
+    
     // 利用可能な色の配列
     private let availableColors = ["red", "blue", "green", "yellow", "purple", "gray"]
     
-    // 初期化処理
+    // 初期化処理（既存の時間割編集用）
     init(timetable: Timetable?, day: Int, period: Int, pattern: Pattern) {
         self.existingTimetable = timetable
         self.defaultDay = day
         self.defaultPeriod = period
         self.defaultPattern = pattern
+        self.selectMode = false
+        
+        // 状態変数の初期化
+        _selectedDay = State(initialValue: day)
+        _selectedPeriod = State(initialValue: period)
+    }
+    
+    // 初期化処理（コマ選択モード用）
+    init(pattern: Pattern, selectMode: Bool = true) {
+        self.existingTimetable = nil
+        self.defaultDay = 0
+        self.defaultPeriod = 1
+        self.defaultPattern = pattern
+        self.selectMode = selectMode
+        
+        // 状態変数の初期化
+        _selectedDay = State(initialValue: 0)
+        _selectedPeriod = State(initialValue: 1)
     }
     
     var body: some View {
         NavigationView {
-            Form {
-                // 基本情報セクション
-                Section(header: Text("基本情報")) {
-                    TextField("教科名", text: $subjectName)
-                    TextField("教室", text: $classroom)
-                }
-                
-                // 詳細情報セクション
-                Section(header: Text("詳細情報")) {
-                    TextField("課題", text: $task)
-                    TextField("教科書", text: $textbook)
-                }
-                
-                // 色選択セクション
-                Section(header: Text("色")) {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 10) {
-                        ForEach(availableColors, id: \.self) { color in
-                            colorCell(color)
+            VStack {
+                if selectMode {
+                    // コマ選択モード
+                    Form {
+                        Section(header: Text("コマを選択")) {
+                            Picker("曜日", selection: $selectedDay) {
+                                ForEach(0..<daysOfWeek.count, id: \.self) { index in
+                                    Text(daysOfWeek[index]).tag(index)
+                                }
+                            }
+                            
+                            Picker("時限", selection: $selectedPeriod) {
+                                ForEach(1...defaultPattern.periodCount, id: \.self) { period in
+                                    Text("\(period)限").tag(period)
+                                }
+                            }
+                            
+                            Button("このコマを選択") {
+                                // コマが選択されたので入力モードに切り替え
+                                existingTimetable = fetchExistingTimetable()
+                            }
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .foregroundColor(.blue)
                         }
                     }
-                    .padding(.vertical, 8)
-                }
-                
-                // 削除ボタンセクション（既存データの場合のみ表示）
-                if existingTimetable != nil {
-                    Section {
-                        Button(action: deleteTimetable) {
-                            Text("削除")
-                                .foregroundColor(.red)
-                                .frame(maxWidth: .infinity, alignment: .center)
+                    .navigationTitle("時間割の追加")
+                } else {
+                    // 時間割データ入力モード
+                    Form {
+                        // 基本情報セクション
+                        Section(header: Text("基本情報")) {
+                            if existingTimetable == nil {
+                                // 新規作成時はコマ情報を表示
+                                HStack {
+                                    Text("コマ")
+                                    Spacer()
+                                    Text("\(daysOfWeek[selectedDay])\(selectedPeriod)限")
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                            
+                            TextField("教科名", text: $subjectName)
+                            TextField("教室", text: $classroom)
+                        }
+                        
+                        // 詳細情報セクション
+                        Section(header: Text("詳細情報")) {
+                            TextField("課題", text: $task)
+                            TextField("教科書", text: $textbook)
+                        }
+                        
+                        // 色選択セクション
+                        Section(header: Text("色")) {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 10) {
+                                ForEach(availableColors, id: \.self) { color in
+                                    colorCell(color)
+                                }
+                            }
+                            .padding(.vertical, 8)
+                        }
+                        
+                        // 削除ボタンセクション（既存データの場合のみ表示）
+                        if existingTimetable != nil {
+                            Section {
+                                Button(action: deleteTimetable) {
+                                    Text("削除")
+                                        .foregroundColor(.red)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                            }
                         }
                     }
+                    .navigationTitle(existingTimetable != nil ? "時間割の編集" : "時間割の追加")
                 }
             }
-            .navigationTitle(existingTimetable != nil ? "時間割の編集" : "時間割の追加")
             .navigationBarItems(
                 leading: Button("キャンセル") {
                     presentationMode.wrappedValue.dismiss()
                 },
-                trailing: Button("保存") {
-                    saveTimetable()
-                }
+                trailing: selectMode || existingTimetable != nil ? 
+                    Button("保存") {
+                        saveTimetable()
+                    } : nil
             )
             .onAppear {
                 loadTimetableData()
@@ -107,6 +176,22 @@ struct TimetableDetailView: View {
             }
     }
     
+    // 既存のデータを取得
+    private func fetchExistingTimetable() -> Timetable? {
+        let request: NSFetchRequest<Timetable> = Timetable.fetchRequest()
+        request.predicate = NSPredicate(format: "dayOfWeek == %d AND period == %d AND relationship == %@", 
+                                    Int16(selectedDay), Int16(selectedPeriod), defaultPattern)
+        request.fetchLimit = 1
+        
+        do {
+            let results = try viewContext.fetch(request)
+            return results.first
+        } catch {
+            print("時間割データの取得エラー: \(error)")
+            return nil
+        }
+    }
+    
     // 既存データの読み込み
     private func loadTimetableData() {
         if let timetable = existingTimetable {
@@ -127,8 +212,8 @@ struct TimetableDetailView: View {
             // 既存データがない場合のみIDと基本情報を設定
             if existingTimetable == nil {
                 timetable.id = UUID()
-                timetable.dayOfWeek = Int16(defaultDay)
-                timetable.period = Int16(defaultPeriod)
+                timetable.dayOfWeek = Int16(selectedDay)
+                timetable.period = Int16(selectedPeriod)
                 timetable.relationship = defaultPattern
             }
             

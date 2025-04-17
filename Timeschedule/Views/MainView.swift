@@ -16,6 +16,7 @@ struct MainView: View {
     // 状態変数
     @State private var selectedPattern: Pattern?
     @State private var showingDetailSheet = false
+    @State private var showingAddSheet = false
     @State private var selectedDay = 0
     @State private var selectedPeriod = 1
     @State private var selectedTimetable: Timetable?
@@ -87,11 +88,8 @@ struct MainView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        // 時間割追加（デフォルト設定）
-                        selectedDay = 0
-                        selectedPeriod = 1
-                        selectedTimetable = nil
-                        showingDetailSheet = true
+                        // プラスボタンからの登録はコマ選択モードで起動
+                        showingAddSheet = true
                     }) {
                         Image(systemName: "plus")
                     }
@@ -107,8 +105,8 @@ struct MainView: View {
                     }
                 }
             }
+            // 時間割詳細/編集画面（既存データまたは空きコマクリック時）
             .sheet(isPresented: $showingDetailSheet) {
-                // 時間割詳細/編集画面
                 if let pattern = selectedPattern {
                     TimetableDetailView(
                         timetable: selectedTimetable,
@@ -117,6 +115,13 @@ struct MainView: View {
                         pattern: pattern
                     )
                     .environment(\.managedObjectContext, viewContext)
+                }
+            }
+            // コマ選択から追加する画面（プラスボタンからの追加時）
+            .sheet(isPresented: $showingAddSheet) {
+                if let pattern = selectedPattern {
+                    TimetableDetailView(pattern: pattern)
+                        .environment(\.managedObjectContext, viewContext)
                 }
             }
         }
@@ -135,15 +140,19 @@ struct MainView: View {
             showingDetailSheet = true
         }) {
             VStack {
-                if let timetable = timetable {
+                if let timetable = timetable, let subjectName = timetable.subjectName, !subjectName.isEmpty {
                     // 時間割データがある場合
-                    Text(timetable.subjectName ?? "")
+                    Text(subjectName)
                         .font(.headline)
                         .foregroundColor(.primary)
                     
                     Text(timetable.classroom ?? "")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                } else {
+                    // 空きコマの場合
+                    Text("")
+                        .font(.caption)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 60)
@@ -172,7 +181,7 @@ struct MainView: View {
     
     // セルの背景色を取得
     private func getCellColor(for timetable: Timetable?) -> Color {
-        guard let timetable = timetable, let colorName = timetable.color else {
+        guard let timetable = timetable, let colorName = timetable.color, let subjectName = timetable.subjectName, !subjectName.isEmpty else {
             return Color(.systemGray6)  // データがない場合のデフォルト色
         }
         

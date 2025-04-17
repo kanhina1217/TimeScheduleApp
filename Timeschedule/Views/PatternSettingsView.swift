@@ -198,7 +198,11 @@ struct PatternDetailView: View {
             patternName = pattern.name ?? ""
             isDefault = pattern.isDefault
             
+            // periodTimesデータを正しく取得
             if let times = pattern.periodTimes as? [[String: String]] {
+                periodTimes = times
+            } else if let times = pattern.periodTimeArray, !times.isEmpty {
+                // 拡張メソッド経由でも取得を試みる
                 periodTimes = times
             }
         }
