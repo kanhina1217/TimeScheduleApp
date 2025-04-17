@@ -201,9 +201,12 @@ struct PatternDetailView: View {
             // periodTimesデータを正しく取得
             if let times = pattern.periodTimes as? [[String: String]] {
                 periodTimes = times
-            } else if let times = pattern.periodTimeArray, !times.isEmpty {
-                // 拡張メソッド経由でも取得を試みる
-                periodTimes = times
+            } else {
+                // periodTimeArrayは非オプショナルなので直接使用
+                let times = pattern.periodTimeArray
+                if !times.isEmpty {
+                    periodTimes = times
+                }
             }
         }
     }
