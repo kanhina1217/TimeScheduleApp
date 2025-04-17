@@ -6,15 +6,15 @@ struct TimetableDetailView: View {
     @Environment(\.presentationMode) var presentationMode
     
     // 現在の時間割データ（編集時に使用）
-    var existingTimetable: Timetable?
+    @State private var existingTimetable: Timetable?
     
     // 新規作成時のデフォルト値
-    var defaultDay: Int
-    var defaultPeriod: Int
-    var defaultPattern: Pattern
+    let defaultDay: Int
+    let defaultPeriod: Int
+    let defaultPattern: Pattern
     
     // 選択モード（コマを選択する場合trueに）
-    var selectMode: Bool
+    @State private var selectMode: Bool
     
     // 編集用の状態変数
     @State private var subjectName: String = ""
@@ -35,26 +35,26 @@ struct TimetableDetailView: View {
     
     // 初期化処理（既存の時間割編集用）
     init(timetable: Timetable?, day: Int, period: Int, pattern: Pattern) {
-        self.existingTimetable = timetable
         self.defaultDay = day
         self.defaultPeriod = period
         self.defaultPattern = pattern
-        self.selectMode = false
         
         // 状態変数の初期化
+        _existingTimetable = State(initialValue: timetable)
+        _selectMode = State(initialValue: false)
         _selectedDay = State(initialValue: day)
         _selectedPeriod = State(initialValue: period)
     }
     
     // 初期化処理（コマ選択モード用）
     init(pattern: Pattern, selectMode: Bool = true) {
-        self.existingTimetable = nil
         self.defaultDay = 0
         self.defaultPeriod = 1
         self.defaultPattern = pattern
-        self.selectMode = selectMode
         
         // 状態変数の初期化
+        _existingTimetable = State(initialValue: nil)
+        _selectMode = State(initialValue: selectMode)
         _selectedDay = State(initialValue: 0)
         _selectedPeriod = State(initialValue: 1)
     }
