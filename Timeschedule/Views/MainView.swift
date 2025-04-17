@@ -4,7 +4,7 @@ import CoreData
 struct MainView: View {
     @Environment(\.managedObjectContext) private var viewContext
     
-    // パターンのFetchRequest（デフォルトパターンが先に来るようにソート）
+    // パターンのFetchRequest
     @FetchRequest(
         sortDescriptors: [
             NSSortDescriptor(keyPath: \Pattern.isDefault, ascending: false),
@@ -13,17 +13,15 @@ struct MainView: View {
         animation: .default)
     private var patterns: FetchedResults<Pattern>
     
-    // 選択された時程パターン
+    // 状態変数
     @State private var selectedPattern: Pattern?
-    // 科目追加/編集シートの表示フラグ
-    @State private var showingSubjectSheet = false
-    // 選択された曜日と時限（編集用）
+    @State private var showingDetailSheet = false
     @State private var selectedDay = 0
-    @State private var selectedPeriod = 0
+    @State private var selectedPeriod = 1
+    @State private var selectedTimetable: Timetable?
     
-    // 曜日の配列
+    // 曜日と時限
     private let daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"]
-    // 時限数（設定画面で変更可能にする予定）
     private let periodCount = 6
     
     var body: some View {
@@ -82,17 +80,18 @@ struct MainView: View {
             .navigationTitle("時間割")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        // 設定画面へ（後で実装）
-                    }) {
+                    NavigationLink(destination: PatternSettingsView()) {
                         Image(systemName: "gear")
                     }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        // 時間割追加/編集
-                        showingSubjectSheet = true
+                        // 時間割追加（デフォルト設定）
+                        selectedDay = 0
+                        selectedPeriod = 1
+                        selectedTimetable = nil
+                        showingDetailSheet = true
                     }) {
                         Image(systemName: "plus")
                     }
@@ -108,21 +107,17 @@ struct MainView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingSubjectSheet) {
-                // 時間割追加/編集シート（ここでは仮の実装）
-                VStack {
-                    Text("科目の追加/編集")
-                        .font(.headline)
-                    Text("選択: \(daysOfWeek[selectedDay])曜日 \(selectedPeriod+1)時限")
-                    
-                    Spacer()
-                    
-                    Button("閉じる") {
-                        showingSubjectSheet = false
-                    }
-                    .padding()
+            .sheet(isPresented: $showingDetailSheet) {
+                // 時間割詳細/編集画面
+                if let pattern = selectedPattern {
+                    TimetableDetailView(
+                        timetable: selectedTimetable,
+                        day: selectedDay,
+                        period: selectedPeriod,
+                        pattern: pattern
+                    )
+                    .environment(\.managedObjectContext, viewContext)
                 }
-                .padding()
             }
         }
     }
@@ -135,8 +130,9 @@ struct MainView: View {
         return Button(action: {
             // セルタップ時の処理
             selectedDay = day
-            selectedPeriod = Int(period) - 1
-            showingSubjectSheet = true
+            selectedPeriod = Int(period)
+            selectedTimetable = timetable
+            showingDetailSheet = true
         }) {
             VStack {
                 if let timetable = timetable {
