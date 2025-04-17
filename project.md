@@ -105,4 +105,18 @@
 
 - “>”から始まる項目については不明点・決定事項が出た場合、都度確認し記録する。
 - 確認済みの内容のみ本ファイルに記載する。
-- 一つのプロンプトが終了するたびにこちらでcomit/pushをします。comitメッセージを記載してください。
+- 一つのプロンプトが終了するたびにcomit/pushをしてください。
+
+## 開発タスク
+
+1. プロジェクト構成の整理
+   - Models、Views、ViewControllers、Resources フォルダ作成
+   - CoreData モデルファイル（.xcdatamodeld）追加
+
+2. モデル設計（CoreData）
+   - Entity: Timetable（曜日、コマ番号、教科名、教室、課題、教科書、色、パターンID）
+   - Entity: Pattern（通常、短縮A/B/C）
+   - Entity: Subject（教科書・課題管理）
+   - Entity: Attendance（出欠管理）
+
+> 次に①と②を完了した後、SwiftUIでの時間割表示機能へ進行します。
