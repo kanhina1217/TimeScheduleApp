@@ -11,7 +11,10 @@ import SwiftUI
 struct TimescheduleApp: App {
     // CoreDataの永続コントローラーを初期化
     let persistenceController = PersistenceController.shared
-    
+
+    // AppDelegateをSwiftUIで使う場合
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     var body: some Scene {
         WindowGroup {
             MainView()
