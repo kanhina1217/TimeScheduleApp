@@ -35,6 +35,39 @@ extension Pattern {
     var displayName: String {
         return name ?? "不明なパターン"
     }
+    
+    // 各時限の時間情報を取得
+    var periodTimeArray: [[String: String]] {
+        guard let timesData = periodTimes as? [[String: String]] else {
+            return []
+        }
+        return timesData
+    }
+    
+    // 特定の時限の開始時間を取得
+    func startTimeForPeriod(_ period: Int) -> String {
+        let times = periodTimeArray
+        guard period > 0, period <= times.count else {
+            return "--:--"
+        }
+        
+        return times[period-1]["startTime"] ?? "--:--"
+    }
+    
+    // 特定の時限の終了時間を取得
+    func endTimeForPeriod(_ period: Int) -> String {
+        let times = periodTimeArray
+        guard period > 0, period <= times.count else {
+            return "--:--"
+        }
+        
+        return times[period-1]["endTime"] ?? "--:--"
+    }
+    
+    // 時限の合計数を取得
+    var periodCount: Int {
+        return periodTimeArray.count
+    }
 }
 
 // Subjectエンティティの拡張
