@@ -133,6 +133,16 @@ struct PatternDetailView: View {
                                 set: { periodTimes[index]["endTime"] = $0 }
                             ))
                             .keyboardType(.numbersAndPunctuation)
+                            
+                            // 削除ボタン追加
+                            if periodTimes.count > 1 {
+                                Button(action: {
+                                    removePeriod(at: index)
+                                }) {
+                                    Image(systemName: "minus.circle")
+                                        .foregroundColor(.red)
+                                }
+                            }
                         }
                     }
                     
@@ -175,6 +185,11 @@ struct PatternDetailView: View {
             "endTime": "00:00"
         ]
         periodTimes.append(newPeriod)
+    }
+    
+    // 時限を削除
+    private func removePeriod(at index: Int) {
+        periodTimes.remove(at: index)
     }
     
     // パターンデータの読み込み

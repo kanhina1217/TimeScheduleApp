@@ -58,7 +58,7 @@ struct MainView: View {
                         .padding(.horizontal)
                         
                         // 時限行
-                        ForEach(1...periodCount, id: \.self) { period in
+                        ForEach(1...(selectedPattern?.periodCount ?? periodCount), id: \.self) { period in
                             HStack {
                                 // 時限番号
                                 Text("\(period)")
