@@ -46,38 +46,6 @@ struct MainView: View {
                     }
                     .pickerStyle(SegmentedPickerStyle())
                     .padding()
-                    // 時程パターン変更時の処理は必要ない（時刻のみが変わるため）
-                }
-                
-                // 現在のパターンの時間割情報を表示
-                if let pattern = selectedPattern {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack {
-                            ForEach(1...pattern.periodCount, id: \.self) { periodIndex in
-                                VStack {
-                                    Text("\(periodIndex)限")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                    
-                                    Text(pattern.startTimeForPeriod(periodIndex))
-                                        .font(.caption)
-                                    
-                                    Text("〜")
-                                        .font(.caption)
-                                    
-                                    Text(pattern.endTimeForPeriod(periodIndex))
-                                        .font(.caption)
-                                }
-                                .frame(minWidth: 60)
-                                .padding(.vertical, 4)
-                                .padding(.horizontal, 8)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                    .padding(.bottom, 4)
                 }
                 
                 // 時間割表示
@@ -86,7 +54,7 @@ struct MainView: View {
                         // 曜日ヘッダー行
                         HStack {
                             Text("") // 左上の空白セル
-                                .frame(width: 40)
+                                .frame(width: 50)
                             
                             ForEach(daysOfWeek.prefix(5), id: \.self) { day in
                                 Text(day)
@@ -96,20 +64,37 @@ struct MainView: View {
                         }
                         .padding(.horizontal)
                         
-                        // 時限行 - すべてのパターンで同じコマ数を表示
+                        // 時限行
                         ForEach(1...(selectedPattern?.periodCount ?? periodCount), id: \.self) { period in
-                            HStack {
-                                // 時限番号
-                                Text("\(period)")
-                                    .font(.headline)
-                                    .frame(width: 40)
-                                
-                                // 曜日ごとのセル
-                                ForEach(0..<5) { day in
-                                    timetableCell(day: day, period: Int16(period))
+                            VStack(spacing: 2) {
+                                HStack {
+                                    // 時限番号と時間情報
+                                    VStack(spacing: 2) {
+                                        Text("\(period)")
+                                            .font(.headline)
+                                            .frame(width: 50)
+                                        
+                                        // 現在のパターンの時間情報
+                                        if let pattern = selectedPattern {
+                                            Text(pattern.startTimeForPeriod(period))
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            
+                                            Text(pattern.endTimeForPeriod(period))
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    .frame(width: 50)
+                                    
+                                    // 曜日ごとのセル
+                                    ForEach(0..<5) { day in
+                                        timetableCell(day: day, period: Int16(period))
+                                    }
                                 }
+                                .padding(.horizontal)
                             }
-                            .padding(.horizontal)
+                            .padding(.vertical, 4)
                         }
                     }
                 }
