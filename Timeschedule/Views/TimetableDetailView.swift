@@ -272,11 +272,12 @@ struct TimetableDetailView: View {
                     Button(action: {
                         if !selectedCells.isEmpty {
                             // 最初のセルを基準にして編集モードに遷移
-                            let firstCell = selectedCells.first!
-                            selectedDay = firstCell.day
-                            selectedPeriod = firstCell.period
-                            existingTimetable = fetchExistingTimetable(day: firstCell.day, period: firstCell.period)
-                            selectMode = false
+                            if let firstCell = selectedCells.first {
+                                selectedDay = firstCell.day
+                                selectedPeriod = firstCell.period
+                                existingTimetable = fetchExistingTimetable(day: firstCell.day, period: firstCell.period)
+                                selectMode = false
+                            }
                         }
                     }) {
                         Text("選択完了")
@@ -713,3 +714,7 @@ struct TimetableDetailView_Previews: PreviewProvider {
             .environment(\.managedObjectContext, context)
     }
 }
+
+// CoreDataエンティティを拡張して、Identifiableに準拠させる
+extension Timetable: Identifiable {}
+extension Pattern: Identifiable {}
