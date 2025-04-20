@@ -1,6 +1,17 @@
 import SwiftUI
 import CoreData
 
+// 時間割のコマ位置を表す構造体 (Hashableに準拠)
+struct CellPosition: Hashable {
+    let day: Int
+    let period: Int
+    
+    init(day: Int, period: Int) {
+        self.day = day
+        self.period = period
+    }
+}
+
 struct TimetableDetailView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.presentationMode) var presentationMode
@@ -29,7 +40,7 @@ struct TimetableDetailView: View {
     
     // 複数選択機能用の状態変数
     @State private var isMultiSelectionMode: Bool = false
-    @State private var selectedCells: [(day: Int, period: Int)] = []
+    @State private var selectedCells: [CellPosition] = [] // タプルから構造体配列に変更
     @State private var daySelections: [Bool] = Array(repeating: false, count: 7) // 曜日選択状態
     @State private var periodSelections: [Bool] = Array(repeating: false, count: 10) // 時限選択状態（最大10）
     
@@ -112,9 +123,9 @@ struct TimetableDetailView: View {
     
     // セルの選択状態を切り替え
     private func toggleCellSelection(day: Int, period: Int) {
-        let cell = (day: day, period: period)
+        let cell = CellPosition(day: day, period: period) // 構造体を使用
         
-        if let index = selectedCells.firstIndex(where: { $0.day == day && $0.period == period }) {
+        if let index = selectedCells.firstIndex(of: cell) { // firstIndex(where:)の代わりにfirstIndex(of:)を使用
             // すでに選択されている場合は削除
             selectedCells.remove(at: index)
         } else {
@@ -122,7 +133,7 @@ struct TimetableDetailView: View {
             selectedCells.append(cell)
         }
         
-        // 曜日と時限の選択状態も更新（必要であれば）
+        // 曜日と時限の選択状態も更新
         updateSelectionStates()
     }
     
@@ -324,7 +335,7 @@ struct TimetableDetailView: View {
     
     // 選択セルの表示
     private func selectionCellView(day: Int, period: Int) -> some View {
-        let isSelected = selectedCells.contains { $0.day == day && $0.period == period }
+        let isSelected = selectedCells.contains(CellPosition(day: day, period: period)) // 構造体で検索
         
         return Button(action: {
             // セルのタップ処理
@@ -464,7 +475,7 @@ struct TimetableDetailView: View {
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
-                    ForEach(selectedCells, id: \.0) { cell in
+                    ForEach(selectedCells, id: \.self) { cell in
                         Text("\(daysOfWeek[cell.day])\(cell.period)限")
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
