@@ -78,67 +78,69 @@ struct PersistenceController {
             ["period": "5", "startTime": "13:20", "endTime": "14:10"],
             ["period": "6", "startTime": "14:20", "endTime": "15:10"]
         ]
-        normalPattern.periodTimes = periodTimesData as NSObject
         
-        let shortAPattern = Pattern(context: context)
-        shortAPattern.id = UUID()
-        shortAPattern.name = "短縮A"
-        shortAPattern.isDefault = false
+        // NSArrayとしてCoreDataに保存
+        normalPattern.periodTimes = periodTimesData as NSArray
         
-        // 短縮パターンのperiodTimes
-        let shortPeriodTimesData: [[String: String]] = [
-            ["period": "1", "startTime": "8:30", "endTime": "9:10"],
-            ["period": "2", "startTime": "9:20", "endTime": "10:00"],
-            ["period": "3", "startTime": "10:10", "endTime": "10:50"],
-            ["period": "4", "startTime": "11:00", "endTime": "11:40"],
-            ["period": "5", "startTime": "12:20", "endTime": "13:00"],
-            ["period": "6", "startTime": "13:10", "endTime": "13:50"]
-        ]
-        shortAPattern.periodTimes = shortPeriodTimesData as NSObject
+        // 科目のサンプル
+        let math = Subject(context: context)
+        math.id = UUID()
+        math.name = "数学"
+        math.color = "blue"
+        math.textbook = "数学I・A"
         
-        // 教科のサンプル
-        let mathSubject = Subject(context: context)
-        mathSubject.id = UUID()
-        mathSubject.name = "数学"
-        mathSubject.color = "blue"
-        mathSubject.textbook = "数学I"
+        let english = Subject(context: context)
+        english.id = UUID()
+        english.name = "英語"
+        english.color = "red"
+        english.textbook = "CROWN English Communication I"
         
-        let engSubject = Subject(context: context)
-        engSubject.id = UUID()
-        engSubject.name = "英語"
-        engSubject.color = "red"
-        engSubject.textbook = "コミュニケーション英語I"
-        
-        // 時間割のサンプル（月曜日）
+        // 時間割のサンプル
+        // 月曜日
         let mondayPeriod1 = Timetable(context: context)
         mondayPeriod1.id = UUID()
-        mondayPeriod1.dayOfWeek = 0 // 月曜日
+        mondayPeriod1.dayOfWeek = 0
         mondayPeriod1.period = 1
-        mondayPeriod1.subjectName = "数学"
-        mondayPeriod1.classroom = "3A教室"
-        mondayPeriod1.color = "blue"
-        mondayPeriod1.relationship = normalPattern
+        mondayPeriod1.subjectName = math.name
+        mondayPeriod1.classroom = "3-1"
+        mondayPeriod1.color = math.color
+        mondayPeriod1.textbook = math.textbook
+        mondayPeriod1.pattern = normalPattern
         
         let mondayPeriod2 = Timetable(context: context)
         mondayPeriod2.id = UUID()
-        mondayPeriod2.dayOfWeek = 0 // 月曜日
+        mondayPeriod2.dayOfWeek = 0
         mondayPeriod2.period = 2
-        mondayPeriod2.subjectName = "英語"
-        mondayPeriod2.classroom = "LL教室"
-        mondayPeriod2.color = "red"
-        mondayPeriod2.relationship = normalPattern
+        mondayPeriod2.subjectName = english.name
+        mondayPeriod2.classroom = "3-1"
+        mondayPeriod2.color = english.color
+        mondayPeriod2.textbook = english.textbook
+        mondayPeriod2.pattern = normalPattern
         
-        // 出席サンプル
+        // タスクのサンプル
+        let mathHomework = Task(context: context)
+        mathHomework.id = UUID()
+        mathHomework.title = "数学の宿題"
+        mathHomework.subjectName = math.name
+        mathHomework.color = math.color
+        mathHomework.dueDate = Date().addingTimeInterval(86400) // 1日後
+        mathHomework.priority = 2
+        mathHomework.note = "教科書p.25-30の問題を解く"
+        mathHomework.isCompleted = false
+        mathHomework.timetable = mondayPeriod1
+        
+        // 出席のサンプル
         let attendance = Attendance(context: context)
         attendance.id = UUID()
         attendance.date = Date()
         attendance.isPresent = true
+        attendance.note = "体調良好"
         
         do {
             try context.save()
         } catch {
             let nsError = error as NSError
-            fatalError("サンプルデータの保存エラー: \(nsError), \(nsError.userInfo)")
+            fatalError("サンプルデータの保存に失敗: \(nsError), \(nsError.userInfo)")
         }
     }
 }
