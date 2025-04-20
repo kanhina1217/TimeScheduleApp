@@ -15,6 +15,7 @@ extension Task {
     @NSManaged public var subjectName: String?
     @NSManaged public var title: String?
     @NSManaged public var timetable: Timetable?
+    @NSManaged public var taskType: String? // CoreDataモデルに追加
     
     // TaskExtensions.swiftで参照されているコンピューテッドプロパティ
     // これらはCoreDataモデルに保存せず、メモリ上で動作するように実装
@@ -46,36 +47,6 @@ extension Task {
             if let uuid = self.id, let newValue = newValue {
                 Task._updatedAtDates[uuid] = newValue
             }
-        }
-    }
-    
-    // CoreDataモデルに存在しないがコード上で必要なプロパティ
-    // これはメモリ上でのみ機能し、永続化されません
-    private static var _taskTypeStorage = [UUID: String]()
-    
-    // taskTypeプロパティを追加
-    public var taskType: String? {
-        get {
-            if let uuid = self.id {
-                return Task._taskTypeStorage[uuid] ?? TaskEnums.TaskType.homework.rawValue
-            }
-            return TaskEnums.TaskType.homework.rawValue
-        }
-        set {
-            if let uuid = self.id {
-                Task._taskTypeStorage[uuid] = newValue
-            }
-        }
-    }
-    
-    // 実際のCoreDataモデル更新が行われるまでの臨時対応として
-    // taskTypeEnumプロパティも定義
-    var taskTypeEnum: TaskEnums.TaskType {
-        get {
-            return TaskEnums.TaskType(rawValue: taskType ?? "homework") ?? .homework
-        }
-        set {
-            taskType = newValue.rawValue
         }
     }
 }
