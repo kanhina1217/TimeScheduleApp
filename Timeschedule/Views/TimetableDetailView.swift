@@ -11,7 +11,7 @@ struct TimetableDetailView: View {
     // 新規作成時のデフォルト値
     let defaultDay: Int
     let defaultPeriod: Int
-    let defaultPattern: Pattern
+    let defaultPattern: Pattern  // UIの表示用に使用（時間表示など）
     
     // 選択モード（コマを選択する場合trueに）
     @State private var selectMode: Bool
@@ -78,9 +78,24 @@ struct TimetableDetailView: View {
                                 }
                             }
                             
+                            // 現在のパターンの時間情報を表示
+                            HStack {
+                                Text("時間帯")
+                                Spacer()
+                                VStack(alignment: .trailing) {
+                                    Text("\(defaultPattern.startTimeForPeriod(selectedPeriod))〜\(defaultPattern.endTimeForPeriod(selectedPeriod))")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                    Text("※時程パターン「\(defaultPattern.displayName)」の場合")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                            
                             Button("このコマを選択") {
                                 // コマが選択されたので入力モードに切り替え
                                 existingTimetable = fetchExistingTimetable()
+                                selectMode = false
                             }
                             .frame(maxWidth: .infinity, alignment: .center)
                             .foregroundColor(.blue)
@@ -98,6 +113,28 @@ struct TimetableDetailView: View {
                                     Text("コマ")
                                     Spacer()
                                     Text("\(daysOfWeek[selectedDay])\(selectedPeriod)限")
+                                        .foregroundColor(.gray)
+                                }
+                                // 選択されたパターンでの時間帯を表示（情報提供のみ）
+                                HStack {
+                                    Text("現在の時間帯")
+                                    Spacer()
+                                    Text("\(defaultPattern.startTimeForPeriod(selectedPeriod))〜\(defaultPattern.endTimeForPeriod(selectedPeriod))")
+                                        .foregroundColor(.gray)
+                                }
+                            } else {
+                                // 既存データの場合も時間帯を表示
+                                HStack {
+                                    Text("コマ")
+                                    Spacer()
+                                    Text("\(daysOfWeek[Int(existingTimetable!.dayOfWeek)])\(existingTimetable!.period)限")
+                                        .foregroundColor(.gray)
+                                }
+                                // 選択されたパターンでの時間帯を表示（情報提供のみ）
+                                HStack {
+                                    Text("現在の時間帯")
+                                    Spacer()
+                                    Text("\(defaultPattern.startTimeForPeriod(Int(existingTimetable!.period)))〜\(defaultPattern.endTimeForPeriod(Int(existingTimetable!.period)))")
                                         .foregroundColor(.gray)
                                 }
                             }
@@ -140,8 +177,7 @@ struct TimetableDetailView: View {
                 leading: Button("キャンセル") {
                     presentationMode.wrappedValue.dismiss()
                 },
-                trailing: selectMode || existingTimetable != nil ? 
-                    Button("保存") {
+                trailing: !selectMode ? Button("保存") {
                         saveTimetable()
                     } : nil
             )
@@ -176,11 +212,11 @@ struct TimetableDetailView: View {
             }
     }
     
-    // 既存のデータを取得
+    // 既存のデータを取得（パターンに依存しない）
     private func fetchExistingTimetable() -> Timetable? {
         let request: NSFetchRequest<Timetable> = Timetable.fetchRequest()
-        request.predicate = NSPredicate(format: "dayOfWeek == %d AND period == %d AND relationship == %@", 
-                                    Int16(selectedDay), Int16(selectedPeriod), defaultPattern)
+        request.predicate = NSPredicate(format: "dayOfWeek == %d AND period == %d", 
+                                    Int16(selectedDay), Int16(selectedPeriod))
         request.fetchLimit = 1
         
         do {
@@ -214,7 +250,6 @@ struct TimetableDetailView: View {
                 timetable.id = UUID()
                 timetable.dayOfWeek = Int16(selectedDay)
                 timetable.period = Int16(selectedPeriod)
-                timetable.relationship = defaultPattern
             }
             
             // 共通の更新処理

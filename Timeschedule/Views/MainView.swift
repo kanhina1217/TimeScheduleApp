@@ -13,6 +13,15 @@ struct MainView: View {
         animation: .default)
     private var patterns: FetchedResults<Pattern>
     
+    // 時間割データのFetchRequest
+    @FetchRequest(
+        sortDescriptors: [
+            NSSortDescriptor(keyPath: \Timetable.dayOfWeek, ascending: true),
+            NSSortDescriptor(keyPath: \Timetable.period, ascending: true)
+        ],
+        animation: .default)
+    private var timetables: FetchedResults<Timetable>
+    
     // 状態変数
     @State private var selectedPattern: Pattern?
     @State private var showingDetailSheet = false
@@ -37,9 +46,38 @@ struct MainView: View {
                     }
                     .pickerStyle(SegmentedPickerStyle())
                     .padding()
-                    .onChange(of: selectedPattern) { _ in
-                        // パターン変更時の処理（必要に応じて実装）
+                    // 時程パターン変更時の処理は必要ない（時刻のみが変わるため）
+                }
+                
+                // 現在のパターンの時間割情報を表示
+                if let pattern = selectedPattern {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(1...pattern.periodCount, id: \.self) { periodIndex in
+                                VStack {
+                                    Text("\(periodIndex)限")
+                                        .font(.caption)
+                                        .fontWeight(.bold)
+                                    
+                                    Text(pattern.startTimeForPeriod(periodIndex))
+                                        .font(.caption)
+                                    
+                                    Text("〜")
+                                        .font(.caption)
+                                    
+                                    Text(pattern.endTimeForPeriod(periodIndex))
+                                        .font(.caption)
+                                }
+                                .frame(minWidth: 60)
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 8)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(8)
+                            }
+                        }
+                        .padding(.horizontal)
                     }
+                    .padding(.bottom, 4)
                 }
                 
                 // 時間割表示
@@ -58,7 +96,7 @@ struct MainView: View {
                         }
                         .padding(.horizontal)
                         
-                        // 時限行
+                        // 時限行 - すべてのパターンで同じコマ数を表示
                         ForEach(1...(selectedPattern?.periodCount ?? periodCount), id: \.self) { period in
                             HStack {
                                 // 時限番号
@@ -127,7 +165,7 @@ struct MainView: View {
         }
     }
     
-    // 時間割のセルを生成
+    // 時間割のセルを生成（パターンに関係なく同じ時間割を表示）
     private func timetableCell(day: Int, period: Int16) -> some View {
         // この曜日・時限の時間割データを取得
         let timetable = fetchTimetable(for: day, period: period)
@@ -161,22 +199,14 @@ struct MainView: View {
         }
     }
     
-    // 時間割データを取得
+    // 時間割データを取得（パターンに関係なく取得）
     private func fetchTimetable(for day: Int, period: Int16) -> Timetable? {
-        guard let pattern = selectedPattern else { return nil }
-        
-        let request: NSFetchRequest<Timetable> = Timetable.fetchRequest()
-        request.predicate = NSPredicate(format: "dayOfWeek == %d AND period == %d AND relationship == %@", 
-                                     Int16(day), period, pattern)
-        request.fetchLimit = 1
-        
-        do {
-            let results = try viewContext.fetch(request)
-            return results.first
-        } catch {
-            print("時間割データの取得エラー: \(error)")
-            return nil
+        // パターンに関係なく、曜日と時限だけで時間割を検索
+        let filtered = timetables.filter { timetable in
+            return timetable.dayOfWeek == day && timetable.period == period
         }
+        
+        return filtered.first
     }
     
     // セルの背景色を取得
