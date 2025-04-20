@@ -17,12 +17,12 @@ struct TimetableDetailView: View {
     @Environment(\.presentationMode) var presentationMode
     
     // 現在の時間割データ（編集時に使用）
-    @State private var existingTimetable: Timetable?
+    @State private var existingTimetable: NSManagedObject?
     
     // 新規作成時のデフォルト値
     let defaultDay: Int
     let defaultPeriod: Int
-    let defaultPattern: Pattern  // UIの表示用に使用（時間表示など）
+    let defaultPattern: NSManagedObject  // UIの表示用に使用（時間表示など）
     
     // 選択モード（コマを選択する場合trueに）
     @State private var selectMode: Bool
@@ -51,7 +51,7 @@ struct TimetableDetailView: View {
     private let availableColors = ["red", "blue", "green", "yellow", "purple", "gray"]
     
     // 初期化処理（既存の時間割編集用）
-    init(timetable: Timetable?, day: Int, period: Int, pattern: Pattern) {
+    init(timetable: NSManagedObject?, day: Int, period: Int, pattern: NSManagedObject) {
         self.defaultDay = day
         self.defaultPeriod = period
         self.defaultPattern = pattern
@@ -64,7 +64,7 @@ struct TimetableDetailView: View {
     }
     
     // 初期化処理（コマ選択モード用）
-    init(pattern: Pattern, selectMode: Bool = true) {
+    init(pattern: NSManagedObject, selectMode: Bool = true) {
         self.defaultDay = 0
         self.defaultPeriod = 1
         self.defaultPattern = pattern
@@ -76,6 +76,43 @@ struct TimetableDetailView: View {
         _selectedPeriod = State(initialValue: 1)
     }
     
+    // Pattern型のプロパティにアクセスするためのプライベートメソッド
+    private func getPatternPeriodCount(_ pattern: NSManagedObject) -> Int {
+        guard let periodTimesData = pattern.value(forKey: "periodTimes") as? [[String: String]] else {
+            return 6 // デフォルト値
+        }
+        return periodTimesData.count
+    }
+    
+    private func getPatternStartTime(_ pattern: NSManagedObject, period: Int) -> String {
+        guard let periodTimesData = pattern.value(forKey: "periodTimes") as? [[String: String]],
+              period > 0, period <= periodTimesData.count else {
+            return "--:--" // デフォルト値
+        }
+        return periodTimesData[period-1]["startTime"] ?? "--:--"
+    }
+    
+    private func getPatternEndTime(_ pattern: NSManagedObject, period: Int) -> String {
+        guard let periodTimesData = pattern.value(forKey: "periodTimes") as? [[String: String]],
+              period > 0, period <= periodTimesData.count else {
+            return "--:--" // デフォルト値
+        }
+        return periodTimesData[period-1]["endTime"] ?? "--:--"
+    }
+    
+    private func getPatternDisplayName(_ pattern: NSManagedObject) -> String {
+        return pattern.value(forKey: "name") as? String ?? "不明なパターン"
+    }
+    
+    // Timetable型のプロパティにアクセスするためのプライベートメソッド
+    private func getTimetableDayOfWeek(_ timetable: NSManagedObject) -> Int16 {
+        return timetable.value(forKey: "dayOfWeek") as? Int16 ?? 0
+    }
+    
+    private func getTimetablePeriod(_ timetable: NSManagedObject) -> Int16 {
+        return timetable.value(forKey: "period") as? Int16 ?? 1
+    }
+
     var body: some View {
         NavigationView {
             VStack {
@@ -145,7 +182,7 @@ struct TimetableDetailView: View {
         }
         
         // 時限選択状態の更新
-        for period in 1...defaultPattern.periodCount {
+        for period in 1...getPatternPeriodCount(defaultPattern) {
             periodSelections[period-1] = selectedCells.contains { $0.period == period }
         }
     }
@@ -178,7 +215,7 @@ struct TimetableDetailView: View {
             
             // 時限選択ピッカー
             Picker("時限", selection: $selectedPeriod) {
-                let count = defaultPattern.periodCount
+                let count = getPatternPeriodCount(defaultPattern)
                 ForEach(1...count, id: \.self) { period in
                     Text("\(period)限").tag(period)
                 }
@@ -219,8 +256,8 @@ struct TimetableDetailView: View {
             Spacer()
             VStack(alignment: .trailing) {
                 // 時間表示
-                let startTime = defaultPattern.startTimeForPeriod(selectedPeriod)
-                let endTime = defaultPattern.endTimeForPeriod(selectedPeriod)
+                let startTime = getPatternStartTime(defaultPattern, period: selectedPeriod)
+                let endTime = getPatternEndTime(defaultPattern, period: selectedPeriod)
                 let timeText = "\(startTime)〜\(endTime)"
                 
                 Text(timeText)
@@ -228,7 +265,7 @@ struct TimetableDetailView: View {
                     .foregroundColor(.gray)
                 
                 // パターン名表示
-                let patternText = "※時程パターン「\(defaultPattern.displayName)」の場合"
+                let patternText = "※時程パターン「\(getPatternDisplayName(defaultPattern))」の場合"
                 Text(patternText)
                     .font(.caption)
                     .foregroundColor(.gray)
@@ -312,7 +349,7 @@ struct TimetableDetailView: View {
             }
             
             // 時限行
-            ForEach(1...defaultPattern.periodCount, id: \.self) { period in
+            ForEach(1...getPatternPeriodCount(defaultPattern), id: \.self) { period in
                 HStack(spacing: 4) {
                     // 時限番号
                     Text("\(period)")
@@ -488,8 +525,8 @@ struct TimetableDetailView: View {
                     HStack {
                         Text("現在の時間帯")
                         Spacer()
-                        let startTime = defaultPattern.startTimeForPeriod(selectedPeriod)
-                        let endTime = defaultPattern.endTimeForPeriod(selectedPeriod)
+                        let startTime = getPatternStartTime(defaultPattern, period: selectedPeriod)
+                        let endTime = getPatternEndTime(defaultPattern, period: selectedPeriod)
                         Text("\(startTime)〜\(endTime)")
                             .foregroundColor(.gray)
                     }
@@ -501,8 +538,8 @@ struct TimetableDetailView: View {
                         Text("コマ")
                         Spacer()
                         if let timetable = existingTimetable {
-                            let day = Int(timetable.dayOfWeek)
-                            let period = timetable.period
+                            let day = Int(getTimetableDayOfWeek(timetable))
+                            let period = getTimetablePeriod(timetable)
                             Text("\(daysOfWeek[day])\(period)限")
                                 .foregroundColor(.gray)
                         }
@@ -512,9 +549,9 @@ struct TimetableDetailView: View {
                         Text("現在の時間帯")
                         Spacer()
                         if let timetable = existingTimetable {
-                            let period = Int(timetable.period)
-                            let startTime = defaultPattern.startTimeForPeriod(period)
-                            let endTime = defaultPattern.endTimeForPeriod(period)
+                            let period = Int(getTimetablePeriod(timetable))
+                            let startTime = getPatternStartTime(defaultPattern, period: period)
+                            let endTime = getPatternEndTime(defaultPattern, period: period)
                             Text("\(startTime)〜\(endTime)")
                                 .foregroundColor(.gray)
                         }
@@ -588,21 +625,20 @@ struct TimetableDetailView: View {
     }
     
     // 既存のデータを取得（パターンに依存しない）
-    private func fetchExistingTimetable() -> Timetable? {
+    private func fetchExistingTimetable() -> NSManagedObject? {
         return fetchExistingTimetable(day: selectedDay, period: selectedPeriod)
     }
     
     // 指定した日時のデータを取得
-    private func fetchExistingTimetable(day: Int, period: Int) -> Timetable? {
-        // NSFetchRequestResultからTimetableへの型キャストを行う
+    private func fetchExistingTimetable(day: Int, period: Int) -> NSManagedObject? {
         let request = NSFetchRequest<NSFetchRequestResult>(entityName: "Timetable")
         request.predicate = NSPredicate(format: "dayOfWeek == %d AND period == %d", 
                                     Int16(day), Int16(period))
         request.fetchLimit = 1
         
         do {
-            let results = try viewContext.fetch(request) as? [Timetable]
-            return results?.first
+            let results = try viewContext.fetch(request)
+            return results.first as? NSManagedObject
         } catch {
             print("時間割データの取得エラー: \(error)")
             return nil
@@ -612,11 +648,11 @@ struct TimetableDetailView: View {
     // 既存データの読み込み
     private func loadTimetableData() {
         if let timetable = existingTimetable {
-            subjectName = timetable.subjectName ?? ""
-            classroom = timetable.classroom ?? ""
-            task = timetable.task ?? ""
-            textbook = timetable.textbook ?? ""
-            selectedColor = timetable.color ?? "blue"
+            subjectName = timetable.value(forKey: "subjectName") as? String ?? ""
+            classroom = timetable.value(forKey: "classroom") as? String ?? ""
+            task = timetable.value(forKey: "task") as? String ?? ""
+            textbook = timetable.value(forKey: "textbook") as? String ?? ""
+            selectedColor = timetable.value(forKey: "color") as? String ?? "blue"
         }
     }
     
@@ -624,21 +660,23 @@ struct TimetableDetailView: View {
     private func saveTimetable() {
         withAnimation {
             // 新規作成または既存レコードの更新
-            let timetable = existingTimetable ?? Timetable(context: viewContext)
-            
-            // 既存データがない場合のみIDと基本情報を設定
-            if existingTimetable == nil {
-                timetable.id = UUID()
-                timetable.dayOfWeek = Int16(selectedDay)
-                timetable.period = Int16(selectedPeriod)
+            let timetable: NSManagedObject
+            if let existing = existingTimetable {
+                timetable = existing
+            } else {
+                let entity = NSEntityDescription.entity(forEntityName: "Timetable", in: viewContext)!
+                timetable = NSManagedObject(entity: entity, insertInto: viewContext)
+                timetable.setValue(UUID(), forKey: "id")
+                timetable.setValue(Int16(selectedDay), forKey: "dayOfWeek")
+                timetable.setValue(Int16(selectedPeriod), forKey: "period")
             }
             
             // 共通の更新処理
-            timetable.subjectName = subjectName
-            timetable.classroom = classroom
-            timetable.task = task
-            timetable.textbook = textbook
-            timetable.color = selectedColor
+            timetable.setValue(subjectName, forKey: "subjectName")
+            timetable.setValue(classroom, forKey: "classroom")
+            timetable.setValue(task, forKey: "task")
+            timetable.setValue(textbook, forKey: "textbook")
+            timetable.setValue(selectedColor, forKey: "color")
             
             // 保存
             do {
@@ -657,21 +695,24 @@ struct TimetableDetailView: View {
             for cell in selectedCells {
                 // 既存データがあるか確認
                 let existingTimetable = fetchExistingTimetable(day: cell.day, period: cell.period)
-                let timetable = existingTimetable ?? Timetable(context: viewContext)
                 
-                // 新規作成の場合は基本情報を設定
-                if existingTimetable == nil {
-                    timetable.id = UUID()
-                    timetable.dayOfWeek = Int16(cell.day)
-                    timetable.period = Int16(cell.period)
+                let timetable: NSManagedObject
+                if let existing = existingTimetable {
+                    timetable = existing
+                } else {
+                    let entity = NSEntityDescription.entity(forEntityName: "Timetable", in: viewContext)!
+                    timetable = NSManagedObject(entity: entity, insertInto: viewContext)
+                    timetable.setValue(UUID(), forKey: "id")
+                    timetable.setValue(Int16(cell.day), forKey: "dayOfWeek")
+                    timetable.setValue(Int16(cell.period), forKey: "period")
                 }
                 
                 // 共通の更新処理
-                timetable.subjectName = subjectName
-                timetable.classroom = classroom
-                timetable.task = task
-                timetable.textbook = textbook
-                timetable.color = selectedColor
+                timetable.setValue(subjectName, forKey: "subjectName")
+                timetable.setValue(classroom, forKey: "classroom")
+                timetable.setValue(task, forKey: "task")
+                timetable.setValue(textbook, forKey: "textbook")
+                timetable.setValue(selectedColor, forKey: "color")
             }
             
             // 一括保存
@@ -706,16 +747,26 @@ struct TimetableDetailView: View {
 struct TimetableDetailView_Previews: PreviewProvider {
     static var previews: some View {
         let context = PersistenceController.preview.container.viewContext
-        let pattern = Pattern(context: context)
-        pattern.id = UUID()
-        pattern.name = "通常"
-        pattern.isDefault = true
+        
+        // プレビュー用のPatternを作成
+        let patternDesc = NSEntityDescription.entity(forEntityName: "Pattern", in: context)!
+        let pattern = NSManagedObject(entity: patternDesc, insertInto: context)
+        pattern.setValue(UUID(), forKey: "id")
+        pattern.setValue("通常", forKey: "name")
+        pattern.setValue(true, forKey: "isDefault")
+        
+        // 時限情報を設定
+        let periodTimesData: [[String: String]] = [
+            ["period": "1", "startTime": "8:30", "endTime": "9:20"],
+            ["period": "2", "startTime": "9:30", "endTime": "10:20"],
+            ["period": "3", "startTime": "10:40", "endTime": "11:30"],
+            ["period": "4", "startTime": "11:40", "endTime": "12:30"],
+            ["period": "5", "startTime": "13:20", "endTime": "14:10"],
+            ["period": "6", "startTime": "14:20", "endTime": "15:10"]
+        ]
+        pattern.setValue(periodTimesData, forKey: "periodTimes")
         
         return TimetableDetailView(timetable: nil, day: 0, period: 1, pattern: pattern)
             .environment(\.managedObjectContext, context)
     }
 }
-
-// CoreDataエンティティを拡張して、Identifiableに準拠させる
-extension Timetable: Identifiable {}
-extension Pattern: Identifiable {}
