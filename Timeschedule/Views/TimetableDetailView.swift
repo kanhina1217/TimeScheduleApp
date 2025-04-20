@@ -238,52 +238,70 @@ struct TimetableDetailView: View {
     
     // 複数選択モードのビュー
     private func multiSelectionView() -> some View {
-        VStack {
-            Text("複数のコマをタップして選択")
-                .font(.headline)
-                .padding(.bottom, 8)
-            
-            // 時間割グリッドを表示
-            timetableGridView()
-                .padding()
-            
-            // 選択されたコマの表示
-            selectedCellsView()
-            
-            // 操作ボタン
-            HStack {
-                // キャンセルボタン
-                Button("キャンセル") {
-                    isMultiSelectionMode = false
-                }
-                .frame(maxWidth: .infinity)
-                .foregroundColor(.red)
+        ScrollView {
+            VStack(spacing: 16) {
+                Text("複数のコマをタップして選択")
+                    .font(.headline)
+                    .padding(.top, 8)
                 
-                // 選択完了ボタン
-                Button("選択完了") {
-                    if !selectedCells.isEmpty {
-                        // 最初のセルを基準にして編集モードに遷移
-                        let firstCell = selectedCells.first!
-                        selectedDay = firstCell.day
-                        selectedPeriod = firstCell.period
-                        existingTimetable = fetchExistingTimetable(day: firstCell.day, period: firstCell.period)
-                        selectMode = false
+                // 時間割グリッドを表示
+                timetableGridView()
+                    .padding(.horizontal, 8)
+                
+                // 選択されたコマの表示
+                selectedCellsView()
+                    .padding(.horizontal, 8)
+                
+                Divider()
+                
+                // 操作ボタン
+                HStack(spacing: 20) {
+                    // キャンセルボタン
+                    Button(action: {
+                        isMultiSelectionMode = false
+                    }) {
+                        Text("キャンセル")
+                            .padding()
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(8)
                     }
+                    
+                    // 選択完了ボタン
+                    Button(action: {
+                        if !selectedCells.isEmpty {
+                            // 最初のセルを基準にして編集モードに遷移
+                            let firstCell = selectedCells.first!
+                            selectedDay = firstCell.day
+                            selectedPeriod = firstCell.period
+                            existingTimetable = fetchExistingTimetable(day: firstCell.day, period: firstCell.period)
+                            selectMode = false
+                        }
+                    }) {
+                        Text("選択完了")
+                            .padding()
+                            .foregroundColor(selectedCells.isEmpty ? .gray : .white)
+                            .frame(maxWidth: .infinity)
+                            .background(selectedCells.isEmpty ? Color.gray.opacity(0.3) : Color.blue)
+                            .cornerRadius(8)
+                    }
+                    .disabled(selectedCells.isEmpty)
                 }
-                .frame(maxWidth: .infinity)
-                .foregroundColor(.blue)
-                .disabled(selectedCells.isEmpty)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
         }
     }
     
     // 時間割グリッドビュー
     private func timetableGridView() -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             // 曜日ヘッダー行
-            HStack {
-                Text("") // 左上の空白セル
-                    .frame(width: 40)
+            HStack(spacing: 4) {
+                Text("")
+                    .frame(width: 30)
+                    .font(.caption)
                 
                 ForEach(0..<daysOfWeek.count, id: \.self) { day in
                     Text(daysOfWeek[day])
@@ -294,11 +312,11 @@ struct TimetableDetailView: View {
             
             // 時限行
             ForEach(1...defaultPattern.periodCount, id: \.self) { period in
-                HStack {
+                HStack(spacing: 4) {
                     // 時限番号
                     Text("\(period)")
                         .font(.headline)
-                        .frame(width: 40)
+                        .frame(width: 30)
                     
                     // 曜日ごとのセル
                     ForEach(0..<daysOfWeek.count, id: \.self) { day in
@@ -309,37 +327,9 @@ struct TimetableDetailView: View {
         }
     }
     
-    // 選択されたコマ一覧表示
-    private func selectedCellsView() -> some View {
-        Group {
-            if !selectedCells.isEmpty {
-                VStack(alignment: .leading) {
-                    Text("選択されたコマ： \(selectedCells.count)個")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack {
-                            ForEach(selectedCells, id: \.self) { cell in
-                                Text("\(daysOfWeek[cell.day])\(cell.period)限")
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.blue.opacity(0.1))
-                                    .cornerRadius(4)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-            } else {
-                EmptyView()
-            }
-        }
-    }
-    
     // 選択セルの表示
     private func selectionCellView(day: Int, period: Int) -> some View {
-        let isSelected = selectedCells.contains(CellPosition(day: day, period: period)) // 構造体で検索
+        let isSelected = selectedCells.contains(CellPosition(day: day, period: period))
         
         return Button(action: {
             // セルのタップ処理
@@ -359,10 +349,47 @@ struct TimetableDetailView: View {
                 if isSelected {
                     Image(systemName: "checkmark")
                         .foregroundColor(.blue)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 14, weight: .bold))
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 40)
+            .frame(maxWidth: .infinity, minHeight: 36)
+        }
+        .buttonStyle(BorderlessButtonStyle()) // 重要：タップ領域を確保
+    }
+    
+    // 選択されたコマ一覧表示
+    private func selectedCellsView() -> some View {
+        Group {
+            if !selectedCells.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("選択されたコマ： \(selectedCells.count)個")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(selectedCells, id: \.self) { cell in
+                                Text("\(daysOfWeek[cell.day])\(cell.period)限")
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(4)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .stroke(Color.blue.opacity(0.5), lineWidth: 1)
+                                    )
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .padding(.vertical, 8)
+            } else {
+                Text("コマが選択されていません")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.vertical, 8)
+            }
         }
     }
     
