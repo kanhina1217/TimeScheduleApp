@@ -20,29 +20,36 @@ struct PatternSettingsView: View {
         NavigationView {
             List {
                 ForEach(patterns, id: \.self) { pattern in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(pattern.name ?? "不明なパターン")
-                                .font(.headline)
-                            
-                            if pattern.isDefault {
-                                Text("デフォルト")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        // 時限数
-                        Text("\(pattern.periodCount)時限")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
+                    Button(action: {
+                        // 時程パターンをタップして編集画面に遷移
                         selectedPattern = pattern
                         showingAddPatternSheet = true
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(pattern.name ?? "不明なパターン")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                
+                                if pattern.isDefault {
+                                    Text("デフォルト")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            // 時限数
+                            Text("\(pattern.periodCount)時限")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                            
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                                .font(.caption)
+                        }
+                        .contentShape(Rectangle())
                     }
                 }
                 .onDelete(perform: deletePatterns)
@@ -51,15 +58,12 @@ struct PatternSettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
+                        // 新規作成時はnilを設定
                         selectedPattern = nil
                         showingAddPatternSheet = true
                     }) {
                         Image(systemName: "plus")
                     }
-                }
-                
-                ToolbarItem(placement: .navigationBarLeading) {
-                    EditButton()
                 }
             }
             .sheet(isPresented: $showingAddPatternSheet) {
@@ -92,6 +96,9 @@ struct PatternDetailView: View {
     
     @State private var patternName: String = ""
     @State private var isDefault: Bool = false
+    @State private var useWeekdays: Bool = true  // 月～金を使用
+    @State private var useSaturday: Bool = false // 土曜を使用
+    @State private var useSunday: Bool = false   // 日曜を使用
     @State private var periodTimes: [[String: String]] = [
         ["period": "1", "startTime": "8:30", "endTime": "9:20"],
         ["period": "2", "startTime": "9:30", "endTime": "10:20"],
@@ -111,6 +118,12 @@ struct PatternDetailView: View {
                 Section(header: Text("基本情報")) {
                     TextField("パターン名", text: $patternName)
                     Toggle("デフォルトパターン", isOn: $isDefault)
+                }
+                
+                Section(header: Text("使用する曜日")) {
+                    Toggle("平日（月～金）", isOn: $useWeekdays)
+                    Toggle("土曜日", isOn: $useSaturday)
+                    Toggle("日曜日", isOn: $useSunday)
                 }
                 
                 Section(header: Text("時限設定")) {
@@ -208,6 +221,9 @@ struct PatternDetailView: View {
                     periodTimes = times
                 }
             }
+            
+            // 既存パターンの曜日設定を解析（将来のデータ形式との互換性のため）
+            // 現時点では特に保存されていないので、デフォルト値を使用
         }
     }
     
@@ -223,6 +239,9 @@ struct PatternDetailView: View {
             pattern.name = patternName
             pattern.isDefault = isDefault
             pattern.periodTimes = periodTimes as NSObject
+            
+            // 曜日設定は今後のバージョンで使用するためのみに保存
+            // 実際の使用曜日は別の場所で管理する可能性がある
             
             // 他のパターンのデフォルト状態を更新
             if isDefault {
