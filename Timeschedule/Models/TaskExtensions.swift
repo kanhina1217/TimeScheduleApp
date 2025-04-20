@@ -2,8 +2,71 @@ import Foundation
 import CoreData
 import SwiftUI
 
+// MARK: - Taskエンティティの基本クラス定義
+@objc(Task)
+public class Task: NSManagedObject, Identifiable {
+    @NSManaged public var id: UUID?
+    @NSManaged public var title: String?
+    @NSManaged public var subjectName: String?
+    @NSManaged public var color: String?
+    @NSManaged public var dueDate: Date?
+    @NSManaged public var isCompleted: Bool
+    @NSManaged public var priority: Int16
+    @NSManaged public var note: String?
+    @NSManaged public var timetable: Timetable?
+    @NSManaged public var createdAt: Date?
+    @NSManaged public var updatedAt: Date?
+    @NSManaged public var taskType: String?  // "homework" または "exam" を格納
+    
+    @nonobjc public class func fetchRequest() -> NSFetchRequest<Task> {
+        return NSFetchRequest<Task>(entityName: "Task")
+    }
+}
+
 // Task エンティティを拡張する
 extension Task {
+    // 課題タイプの列挙型
+    enum TaskType: String, CaseIterable {
+        case homework = "homework"
+        case exam = "exam"
+        
+        var title: String {
+            switch self {
+            case .homework: return "課題"
+            case .exam: return "テスト"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .homework: return "doc.text"
+            case .exam: return "doc.questionmark"
+            }
+        }
+        
+        var defaultColor: String {
+            switch self {
+            case .homework: return "blue"
+            case .exam: return "red"
+            }
+        }
+    }
+    
+    // 課題タイプのプロパティ
+    var taskTypeEnum: TaskType {
+        get {
+            return TaskType(rawValue: self.taskType ?? "homework") ?? .homework
+        }
+        set {
+            self.taskType = newValue.rawValue
+        }
+    }
+    
+    // 表示用タイトル（アイコンを含む）
+    var displayTitle: String {
+        return "\(taskTypeEnum.title): \(title ?? "")"
+    }
+    
     // 優先度の列挙型
     enum Priority: Int16, CaseIterable {
         case low = 0
@@ -152,6 +215,7 @@ extension Task {
         task.isCompleted = false
         task.priority = Priority.normal.rawValue
         task.note = "3ページのエッセイ、テーマ：自由"
+        task.taskType = TaskType.homework.rawValue
         return task
     }
 }

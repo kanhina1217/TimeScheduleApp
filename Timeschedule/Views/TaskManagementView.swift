@@ -13,12 +13,14 @@ struct TaskManagementView: View {
     @State private var showingFilterSheet = false
     @State private var selectedTask: Task?
     @State private var searchText = ""
+    @State private var showTaskTypeSheet = false // タスク追加時のタイプ選択シート用
     
     // フィルタと並べ替えのオプション
     @State private var filterOption = FilterOption.all
     @State private var sortOption = SortOption.dueDate
     @State private var showCompletedTasks = true
     @State private var selectedSubject: String?
+    @State private var selectedTaskType: TaskTypeFilter = .all // 追加：課題/テストフィルター
     
     // 標準イニシャライザ
     init() {
@@ -45,6 +47,23 @@ struct TaskManagementView: View {
         
         _tasks = FetchRequest(fetchRequest: request)
         _selectedSubject = State(initialValue: filterSubject)
+    }
+    
+    // タスクタイプフィルター
+    enum TaskTypeFilter: String, CaseIterable, Identifiable {
+        case all = "すべて"
+        case homework = "課題"
+        case exam = "テスト"
+        
+        var id: String { self.rawValue }
+        
+        var icon: String {
+            switch self {
+            case .all: return "doc"
+            case .homework: return "doc.text"
+            case .exam: return "doc.questionmark"
+            }
+        }
     }
     
     // フィルタオプション
@@ -92,6 +111,17 @@ struct TaskManagementView: View {
             // 科目でフィルタリング
             let matchesSubject = selectedSubject == nil || task.subjectName == selectedSubject
             
+            // タスクタイプでフィルタリング
+            let matchesTaskType: Bool
+            switch selectedTaskType {
+            case .all:
+                matchesTaskType = true
+            case .homework:
+                matchesTaskType = task.taskTypeEnum == .homework
+            case .exam:
+                matchesTaskType = task.taskTypeEnum == .exam
+            }
+            
             // 期限でフィルタリング
             var matchesFilter = true
             if filterOption != .all {
@@ -119,7 +149,7 @@ struct TaskManagementView: View {
                 }
             }
             
-            return matchesSearch && matchesCompletion && matchesSubject && matchesFilter
+            return matchesSearch && matchesCompletion && matchesSubject && matchesTaskType && matchesFilter
         }
         .sorted { task1, task2 in
             switch sortOption {
@@ -162,39 +192,53 @@ struct TaskManagementView: View {
                 .padding(.horizontal)
                 
                 // フィルター・並べ替え表示エリア
-                HStack {
-                    Button(action: {
-                        showingFilterSheet = true
-                    }) {
-                        HStack {
-                            Image(systemName: "line.3.horizontal.decrease.circle")
-                            Text(filterOption.rawValue)
-                            Image(systemName: "chevron.down")
-                                .font(.caption)
-                        }
-                        .padding(8)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(8)
-                    }
-                    
-                    Spacer()
-                    
-                    if let selectedSubject = selectedSubject {
-                        HStack {
-                            Text(selectedSubject)
-                            Button(action: {
-                                self.selectedSubject = nil
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        // 期限フィルター
+                        Button(action: {
+                            showingFilterSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                Text(filterOption.rawValue)
+                                Image(systemName: "chevron.down")
                                     .font(.caption)
                             }
+                            .padding(8)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
                         }
-                        .padding(8)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(8)
+                        
+                        // 課題/テストフィルター
+                        Picker("タイプ", selection: $selectedTaskType) {
+                            ForEach(TaskTypeFilter.allCases) { taskType in
+                                HStack {
+                                    Image(systemName: taskType.icon)
+                                    Text(taskType.rawValue)
+                                }.tag(taskType)
+                            }
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .frame(width: 220)
+                        
+                        // 科目フィルター（選択時のみ表示）
+                        if let selectedSubject = selectedSubject {
+                            HStack {
+                                Text(selectedSubject)
+                                Button(action: {
+                                    self.selectedSubject = nil
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                }
+                            }
+                            .padding(8)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                        }
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
                 
                 // タスク一覧
                 if filteredTasks.isEmpty {
@@ -237,11 +281,11 @@ struct TaskManagementView: View {
                     }
                 }
             }
-            .navigationTitle("課題管理")
+            .navigationTitle(getNavigationTitle())
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        showingAddSheet = true
+                        showTaskTypeSheet = true
                     }) {
                         Image(systemName: "plus")
                     }
@@ -296,15 +340,8 @@ struct TaskManagementView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingAddSheet) {
-                // 新規課題追加時は、科目がフィルタリングされている場合はその科目を事前選択
-                if let subject = selectedSubject {
-                    TaskEditView(initialSubjectName: subject)
-                        .environment(\.managedObjectContext, viewContext)
-                } else {
-                    TaskEditView()
-                        .environment(\.managedObjectContext, viewContext)
-                }
+            .sheet(isPresented: $showTaskTypeSheet) {
+                taskTypeSelectionSheet
             }
             .sheet(item: $selectedTask) { task in
                 TaskEditView(task: task)
@@ -314,6 +351,90 @@ struct TaskManagementView: View {
                 filterView
             }
         }
+    }
+    
+    // ナビゲーションタイトルを取得
+    private func getNavigationTitle() -> String {
+        switch selectedTaskType {
+        case .all:
+            return "課題とテスト"
+        case .homework:
+            return "課題一覧"
+        case .exam:
+            return "テスト予定"
+        }
+    }
+    
+    // タスクタイプ選択シート
+    private var taskTypeSelectionSheet: some View {
+        NavigationView {
+            List {
+                // 課題タイプ選択項目
+                ForEach(Task.TaskType.allCases, id: \.self) { taskType in
+                    Button(action: {
+                        showTaskTypeSheet = false
+                        
+                        // タスク作成画面を表示（遅延実行で重なりを防止）
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            showingAddSheet = true
+                            
+                            // 科目が選択されている場合は、その科目でタスクを作成
+                            if let subject = selectedSubject {
+                                let defaultColor = taskType == .homework ? "blue" : "red"
+                                selectedTask = createNewTask(subject: subject, taskType: taskType, color: defaultColor)
+                            } else {
+                                // 科目が選択されていない場合、新規タスク作成画面を表示
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    // 科目なしで新規作成
+                                    selectedTask = createNewTask(subject: "", taskType: taskType, color: taskType.defaultColor)
+                                }
+                            }
+                        }
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: taskType.icon)
+                                .frame(width: 30, height: 30)
+                                .foregroundColor(.white)
+                                .background(
+                                    Circle()
+                                        .fill(taskType == .homework ? Color.blue : Color.red)
+                                )
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(taskType == .homework ? "課題を追加" : "テストを追加")
+                                    .font(.headline)
+                                
+                                Text(taskType == .homework ? "提出物やレポートなどの課題" : "テストや試験の予定")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 6)
+                    }
+                }
+            }
+            .navigationTitle("予定タイプを選択")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("キャンセル") {
+                        showTaskTypeSheet = false
+                    }
+                }
+            }
+        }
+    }
+    
+    // 新規タスク作成
+    private func createNewTask(subject: String, taskType: Task.TaskType, color: String) -> Task {
+        let newTask = Task(context: viewContext)
+        newTask.id = UUID()
+        newTask.subjectName = subject
+        newTask.taskType = taskType.rawValue
+        newTask.color = color
+        newTask.createdAt = Date()
+        newTask.updatedAt = Date()
+        return newTask
     }
     
     // タスク行の表示
@@ -335,6 +456,11 @@ struct TaskManagementView: View {
                 // タスク情報
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
+                        // アイコン（課題かテストかを表示）
+                        Image(systemName: task.taskTypeEnum.icon)
+                            .foregroundColor(task.taskTypeEnum == .homework ? .blue : .red)
+                            .font(.caption)
+                        
                         // 優先度表示
                         Circle()
                             .fill(task.priorityEnum.color)
@@ -398,6 +524,27 @@ struct TaskManagementView: View {
                                 Text(option.rawValue)
                                 Spacer()
                                 if filterOption == option {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                        }
+                        .foregroundColor(.primary)
+                    }
+                }
+                
+                Section(header: Text("予定タイプ")) {
+                    ForEach(TaskTypeFilter.allCases) { type in
+                        Button(action: {
+                            selectedTaskType = type
+                            showingFilterSheet = false
+                        }) {
+                            HStack {
+                                Image(systemName: type.icon)
+                                    .foregroundColor(type == .homework ? .blue : (type == .exam ? .red : .primary))
+                                Text(type.rawValue)
+                                Spacer()
+                                if selectedTaskType == type {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.blue)
                                 }

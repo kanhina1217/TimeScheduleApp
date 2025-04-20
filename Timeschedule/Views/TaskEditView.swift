@@ -16,6 +16,7 @@ struct TaskEditView: View {
     @State private var hasDueDate = false
     @State private var priority: Task.Priority = .normal
     @State private var note = ""
+    @State private var taskType: Task.TaskType = .homework // 追加：課題かテストかを選択
     
     // 科目選択用の状態変数
     @State private var isSelectingSubject = false
@@ -54,10 +55,11 @@ struct TaskEditView: View {
     }
     
     // 科目名と色を指定して初期化するイニシャライザ
-    init(initialSubject: String, initialColor: String = "blue") {
+    init(initialSubject: String, initialColor: String = "blue", taskType: Task.TaskType = .homework) {
         self.task = nil
         _subjectName = State(initialValue: initialSubject)
         _color = State(initialValue: initialColor)
+        _taskType = State(initialValue: taskType)
     }
     
     // 科目名のみを指定して初期化するイニシャライザ
@@ -88,9 +90,28 @@ struct TaskEditView: View {
     var body: some View {
         NavigationView {
             Form {
+                // タスクタイプ選択セクション (新規追加)
+                Section(header: Text("予定タイプ")) {
+                    Picker("タイプ", selection: $taskType) {
+                        ForEach(Task.TaskType.allCases, id: \.self) { type in
+                            HStack {
+                                Image(systemName: type.icon)
+                                Text(type.title)
+                            }.tag(type)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .onChange(of: taskType) { oldValue, newValue in
+                        // タイプが変更されたら、デフォルトの色を設定
+                        if color == oldValue.defaultColor {
+                            color = newValue.defaultColor
+                        }
+                    }
+                }
+                
                 // タスク基本情報
                 Section(header: Text("基本情報")) {
-                    TextField("タイトル", text: $title)
+                    TextField(taskType == .homework ? "課題タイトル" : "テスト内容", text: $title)
                     
                     HStack {
                         if isSelectingSubject {
@@ -141,12 +162,12 @@ struct TaskEditView: View {
                 }
                 
                 // 期限設定
-                Section(header: Text("期限")) {
-                    Toggle("期限を設定", isOn: $hasDueDate)
+                Section(header: Text(taskType == .homework ? "提出期限" : "テスト日時")) {
+                    Toggle(taskType == .homework ? "期限を設定" : "日時を設定", isOn: $hasDueDate)
                     
                     if hasDueDate {
                         DatePicker(
-                            "期日",
+                            taskType == .homework ? "期日" : "日時",
                             selection: $dueDate,
                             displayedComponents: [.date, .hourAndMinute]
                         )
@@ -170,12 +191,12 @@ struct TaskEditView: View {
                 }
                 
                 // メモ入力
-                Section(header: Text("メモ")) {
+                Section(header: Text(taskType == .homework ? "メモ" : "テスト範囲・メモ")) {
                     TextEditor(text: $note)
                         .frame(height: 100)
                 }
             }
-            .navigationTitle(task == nil ? "新規課題" : "課題を編集")
+            .navigationTitle(getNavigationTitle())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -195,6 +216,15 @@ struct TaskEditView: View {
             .onAppear {
                 loadTaskData()
             }
+        }
+    }
+    
+    // ナビゲーションタイトルを取得する
+    private func getNavigationTitle() -> String {
+        if task == nil {
+            return taskType == .homework ? "新規課題" : "新規テスト"
+        } else {
+            return taskType == .homework ? "課題を編集" : "テストを編集"
         }
     }
     
@@ -224,6 +254,7 @@ struct TaskEditView: View {
             }
             priority = task.priorityEnum
             note = task.note ?? ""
+            taskType = task.taskTypeEnum // 追加：タスクタイプを読み込む
         }
         
         // 科目一覧を読み込む
@@ -276,6 +307,7 @@ struct TaskEditView: View {
             taskToSave.note = note
             taskToSave.createdAt = taskToSave.createdAt ?? Date()
             taskToSave.updatedAt = Date()
+            taskToSave.taskType = taskType.rawValue // 追加：タスクタイプを保存
             
             // 保存を実行
             do {
