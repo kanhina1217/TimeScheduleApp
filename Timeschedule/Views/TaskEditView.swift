@@ -222,14 +222,15 @@ struct TaskEditView: View {
     
     // 既存の科目一覧を読み込む（時間割から）
     private func loadSubjects() {
-        let fetchRequest: NSFetchRequest<Timetable> = Timetable.fetchRequest()
+        // NSFetchRequestResultからTimetableへの型キャストを行う
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Timetable")
         fetchRequest.predicate = NSPredicate(format: "subjectName != nil")
         
         do {
-            let timetables = try viewContext.fetch(fetchRequest)
+            let timetables = try viewContext.fetch(fetchRequest) as? [Timetable]
             var subjectDict = [String: String]() // 科目名をキー、色を値とする辞書
             
-            for timetable in timetables {
+            for timetable in timetables ?? [] {
                 if let subjectName = timetable.subjectName, !subjectName.isEmpty {
                     subjectDict[subjectName] = timetable.color ?? "blue"
                 }

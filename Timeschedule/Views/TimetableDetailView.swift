@@ -594,14 +594,15 @@ struct TimetableDetailView: View {
     
     // 指定した日時のデータを取得
     private func fetchExistingTimetable(day: Int, period: Int) -> Timetable? {
-        let request: NSFetchRequest<Timetable> = Timetable.fetchRequest()
+        // NSFetchRequestResultからTimetableへの型キャストを行う
+        let request = NSFetchRequest<NSFetchRequestResult>(entityName: "Timetable")
         request.predicate = NSPredicate(format: "dayOfWeek == %d AND period == %d", 
                                     Int16(day), Int16(period))
         request.fetchLimit = 1
         
         do {
-            let results = try viewContext.fetch(request)
-            return results.first
+            let results = try viewContext.fetch(request) as? [Timetable]
+            return results?.first
         } catch {
             print("時間割データの取得エラー: \(error)")
             return nil
