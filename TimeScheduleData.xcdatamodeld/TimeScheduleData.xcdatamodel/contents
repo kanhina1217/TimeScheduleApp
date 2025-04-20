@@ -38,7 +38,7 @@
         <attribute name="subjectName" optional="YES" attributeType="String"/>
         <attribute name="task" optional="YES" attributeType="String"/>
         <attribute name="textbook" optional="YES" attributeType="String"/>
-        <relationship name="pattern" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Pattern" name="pattern"/>
+        <relationship name="pattern" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Pattern"/>
         <relationship name="tasks" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Task" inverseName="timetable" inverseEntity="Task"/>
     </entity>
 </model>

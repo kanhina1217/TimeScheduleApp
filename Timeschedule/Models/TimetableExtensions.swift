@@ -10,67 +10,8 @@ import CoreData
  * 時程パターンが変わるとその時間帯だけが変わります。
  */
 
-// MARK: - CoreDataエンティティ定義
-// Timetableエンティティの基本クラス定義
-@objc(Timetable)
-public class Timetable: NSManagedObject, Identifiable {
-    @NSManaged public var id: UUID?
-    @NSManaged public var dayOfWeek: Int16
-    @NSManaged public var period: Int16
-    @NSManaged public var subjectName: String?
-    @NSManaged public var classroom: String?
-    @NSManaged public var task: String?
-    @NSManaged public var textbook: String?
-    @NSManaged public var color: String?
-    @NSManaged public var pattern: Pattern?
-    @NSManaged public var tasks: NSSet?
-    
-    @nonobjc public class func fetchRequest() -> NSFetchRequest<Timetable> {
-        return NSFetchRequest<Timetable>(entityName: "Timetable")
-    }
-}
-
-// Patternエンティティの基本クラス定義
-@objc(Pattern)
-public class Pattern: NSManagedObject, Identifiable {
-    @NSManaged public var id: UUID?
-    @NSManaged public var name: String?
-    @NSManaged public var isDefault: Bool
-    @NSManaged public var periodTimes: NSObject?
-    
-    @nonobjc public class func fetchRequest() -> NSFetchRequest<Pattern> {
-        return NSFetchRequest<Pattern>(entityName: "Pattern")
-    }
-}
-
-// Subjectエンティティの基本クラス定義
-@objc(Subject)
-public class Subject: NSManagedObject, Identifiable {
-    @NSManaged public var id: UUID?
-    @NSManaged public var name: String?
-    @NSManaged public var color: String?
-    @NSManaged public var textbook: String?
-    
-    @nonobjc public class func fetchRequest() -> NSFetchRequest<Subject> {
-        return NSFetchRequest<Subject>(entityName: "Subject")
-    }
-}
-
-// Attendanceエンティティの基本クラス定義
-@objc(Attendance)
-public class Attendance: NSManagedObject, Identifiable {
-    @NSManaged public var id: UUID?
-    @NSManaged public var date: Date?
-    @NSManaged public var isPresent: Bool
-    @NSManaged public var note: String?
-    
-    @nonobjc public class func fetchRequest() -> NSFetchRequest<Attendance> {
-        return NSFetchRequest<Attendance>(entityName: "Attendance")
-    }
-}
-
 // MARK: - エンティティ拡張
-// Timetableエンティティの拡張
+// Timetableエンティティの拡張（クラス定義を削除）
 extension Timetable {
     // 曜日を文字列で取得
     var dayOfWeekString: String {
@@ -99,7 +40,7 @@ extension Timetable {
     }
 }
 
-// Patternエンティティの拡張
+// Patternエンティティの拡張（クラス定義を削除）
 extension Pattern {
     var displayName: String {
         return name ?? "不明なパターン"
@@ -139,7 +80,7 @@ extension Pattern {
     }
 }
 
-// Subjectエンティティの拡張
+// Subjectエンティティの拡張（クラス定義を削除）
 extension Subject {
     var displayColor: Color {
         guard let colorName = color else { return .gray }
@@ -155,7 +96,7 @@ extension Subject {
     }
 }
 
-// Attendanceエンティティの拡張
+// Attendanceエンティティの拡張（クラス定義を削除）
 extension Attendance {
     var statusString: String {
         return isPresent ? "出席" : "欠席"
