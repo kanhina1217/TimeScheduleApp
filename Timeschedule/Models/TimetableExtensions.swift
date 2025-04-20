@@ -10,6 +10,50 @@ import CoreData
  * 時程パターンが変わるとその時間帯だけが変わります。
  */
 
+// MARK: - クラス定義
+// Timetableエンティティの基本クラス定義
+@objc(Timetable)
+public class Timetable: NSManagedObject {
+    @NSManaged public var id: UUID?
+    @NSManaged public var dayOfWeek: Int16
+    @NSManaged public var period: Int16
+    @NSManaged public var subjectName: String?
+    @NSManaged public var classroom: String?
+    @NSManaged public var task: String?
+    @NSManaged public var textbook: String?
+    @NSManaged public var color: String?
+    @NSManaged public var pattern: Pattern?
+    @NSManaged public var tasks: NSSet?
+}
+
+// Patternエンティティの基本クラス定義
+@objc(Pattern)
+public class Pattern: NSManagedObject {
+    @NSManaged public var id: UUID?
+    @NSManaged public var name: String?
+    @NSManaged public var isDefault: Bool
+    @NSManaged public var periodTimes: NSObject?
+}
+
+// Subjectエンティティの基本クラス定義
+@objc(Subject)
+public class Subject: NSManagedObject {
+    @NSManaged public var id: UUID?
+    @NSManaged public var name: String?
+    @NSManaged public var color: String?
+    @NSManaged public var textbook: String?
+}
+
+// Attendanceエンティティの基本クラス定義
+@objc(Attendance)
+public class Attendance: NSManagedObject {
+    @NSManaged public var id: UUID?
+    @NSManaged public var date: Date?
+    @NSManaged public var isPresent: Bool
+    @NSManaged public var note: String?
+}
+
+// MARK: - 拡張
 // Timetableエンティティの拡張
 extension Timetable {
     // 曜日を文字列で取得
