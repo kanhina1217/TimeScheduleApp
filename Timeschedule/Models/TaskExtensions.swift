@@ -2,6 +2,26 @@ import Foundation
 import CoreData
 import SwiftUI
 
+// MARK: - Taskエンティティの基本クラス定義
+@objc(Task)
+public class Task: NSManagedObject, Identifiable {
+    @NSManaged public var id: UUID?
+    @NSManaged public var title: String?
+    @NSManaged public var subjectName: String?
+    @NSManaged public var color: String?
+    @NSManaged public var dueDate: Date?
+    @NSManaged public var isCompleted: Bool
+    @NSManaged public var priority: Int16
+    @NSManaged public var note: String?
+    @NSManaged public var timetable: Timetable?
+    @NSManaged public var createdAt: Date?
+    @NSManaged public var updatedAt: Date?
+    
+    @nonobjc public class func fetchRequest() -> NSFetchRequest<Task> {
+        return NSFetchRequest<Task>(entityName: "Task")
+    }
+}
+
 extension Task {
     // 優先度の列挙型
     enum Priority: Int16, CaseIterable {

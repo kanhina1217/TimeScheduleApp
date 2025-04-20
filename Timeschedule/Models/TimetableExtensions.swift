@@ -10,7 +10,66 @@ import CoreData
  * 時程パターンが変わるとその時間帯だけが変わります。
  */
 
-// MARK: - 拡張
+// MARK: - CoreDataエンティティ定義
+// Timetableエンティティの基本クラス定義
+@objc(Timetable)
+public class Timetable: NSManagedObject, Identifiable {
+    @NSManaged public var id: UUID?
+    @NSManaged public var dayOfWeek: Int16
+    @NSManaged public var period: Int16
+    @NSManaged public var subjectName: String?
+    @NSManaged public var classroom: String?
+    @NSManaged public var task: String?
+    @NSManaged public var textbook: String?
+    @NSManaged public var color: String?
+    @NSManaged public var pattern: Pattern?
+    @NSManaged public var tasks: NSSet?
+    
+    @nonobjc public class func fetchRequest() -> NSFetchRequest<Timetable> {
+        return NSFetchRequest<Timetable>(entityName: "Timetable")
+    }
+}
+
+// Patternエンティティの基本クラス定義
+@objc(Pattern)
+public class Pattern: NSManagedObject, Identifiable {
+    @NSManaged public var id: UUID?
+    @NSManaged public var name: String?
+    @NSManaged public var isDefault: Bool
+    @NSManaged public var periodTimes: NSObject?
+    
+    @nonobjc public class func fetchRequest() -> NSFetchRequest<Pattern> {
+        return NSFetchRequest<Pattern>(entityName: "Pattern")
+    }
+}
+
+// Subjectエンティティの基本クラス定義
+@objc(Subject)
+public class Subject: NSManagedObject, Identifiable {
+    @NSManaged public var id: UUID?
+    @NSManaged public var name: String?
+    @NSManaged public var color: String?
+    @NSManaged public var textbook: String?
+    
+    @nonobjc public class func fetchRequest() -> NSFetchRequest<Subject> {
+        return NSFetchRequest<Subject>(entityName: "Subject")
+    }
+}
+
+// Attendanceエンティティの基本クラス定義
+@objc(Attendance)
+public class Attendance: NSManagedObject, Identifiable {
+    @NSManaged public var id: UUID?
+    @NSManaged public var date: Date?
+    @NSManaged public var isPresent: Bool
+    @NSManaged public var note: String?
+    
+    @nonobjc public class func fetchRequest() -> NSFetchRequest<Attendance> {
+        return NSFetchRequest<Attendance>(entityName: "Attendance")
+    }
+}
+
+// MARK: - エンティティ拡張
 // Timetableエンティティの拡張
 extension Timetable {
     // 曜日を文字列で取得
@@ -113,10 +172,3 @@ extension Attendance {
         return formatter.string(from: date)
     }
 }
-
-// CoreDataエンティティを拡張して、Identifiableに準拠させる
-extension Timetable: Identifiable {}
-extension Pattern: Identifiable {}
-extension Subject: Identifiable {}
-extension Task: Identifiable {}
-extension Attendance: Identifiable {}
