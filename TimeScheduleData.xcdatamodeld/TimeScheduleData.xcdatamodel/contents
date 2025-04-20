@@ -27,6 +27,7 @@
         <attribute name="note" optional="YES" attributeType="String"/>
         <attribute name="priority" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="subjectName" optional="YES" attributeType="String"/>
+        <attribute name="taskType" optional="YES" attributeType="String"/>
         <attribute name="title" optional="YES" attributeType="String"/>
         <relationship name="timetable" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Timetable" inverseName="tasks" inverseEntity="Timetable"/>
     </entity>

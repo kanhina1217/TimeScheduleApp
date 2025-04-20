@@ -14,9 +14,9 @@ struct TaskEditView: View {
     @State private var color = "blue"
     @State private var dueDate = Date()
     @State private var hasDueDate = false
-    @State private var priority: Task.Priority = .normal
+    @State private var priority: TaskEnums.Priority = .normal
     @State private var note = ""
-    @State private var taskType: Task.TaskType = .homework // 追加：課題かテストかを選択
+    @State private var taskType: TaskEnums.TaskType = .homework // TaskEnums名前空間を使用
     
     // 科目選択用の状態変数
     @State private var isSelectingSubject = false
@@ -55,7 +55,7 @@ struct TaskEditView: View {
     }
     
     // 科目名と色を指定して初期化するイニシャライザ
-    init(initialSubject: String, initialColor: String = "blue", taskType: Task.TaskType = .homework) {
+    init(initialSubject: String, initialColor: String = "blue", taskType: TaskEnums.TaskType = .homework) {
         self.task = nil
         _subjectName = State(initialValue: initialSubject)
         _color = State(initialValue: initialColor)
@@ -93,7 +93,7 @@ struct TaskEditView: View {
                 // タスクタイプ選択セクション (新規追加)
                 Section(header: Text("予定タイプ")) {
                     Picker("タイプ", selection: $taskType) {
-                        ForEach(Task.TaskType.allCases, id: \.self) { type in
+                        ForEach(TaskEnums.TaskType.allCases, id: \.self) { type in
                             HStack {
                                 Image(systemName: type.icon)
                                 Text(type.title)
@@ -177,7 +177,7 @@ struct TaskEditView: View {
                 // 優先度設定
                 Section(header: Text("優先度")) {
                     Picker("優先度", selection: $priority) {
-                        ForEach(Task.Priority.allCases, id: \.self) { priority in
+                        ForEach(TaskEnums.Priority.allCases, id: \.self) { priority in
                             HStack {
                                 Circle()
                                     .fill(priority.color)
@@ -243,25 +243,28 @@ struct TaskEditView: View {
     
     // タスクデータを読み込む
     private func loadTaskData() {
-        // 編集モードの場合は既存データを読み込む
         if let task = task {
             title = task.title ?? ""
             subjectName = task.subjectName ?? ""
             color = task.color ?? "blue"
-            hasDueDate = task.dueDate != nil
-            if let dueDate = task.dueDate {
-                self.dueDate = dueDate
+            
+            if let date = task.dueDate {
+                dueDate = date
+                hasDueDate = true
+            } else {
+                hasDueDate = false
             }
+            
+            // taskTypeプロパティを安全に参照
+            if let typeString = task.taskType, let type = TaskEnums.TaskType(rawValue: typeString) {
+                taskType = type
+            } else {
+                taskType = .homework // デフォルト値
+            }
+            
             priority = task.priorityEnum
             note = task.note ?? ""
-            taskType = task.taskTypeEnum // 追加：タスクタイプを読み込む
         }
-        
-        // 科目一覧を読み込む
-        loadSubjects()
-        
-        // 初期科目の色を設定
-        setupInitialSubjectColor(subjectName)
     }
     
     // 既存の科目一覧を読み込む（時間割から）
@@ -293,29 +296,35 @@ struct TaskEditView: View {
     
     // タスクを保存する
     private func saveTask() {
-        withAnimation {
-            let taskToSave = task ?? Task(context: viewContext)
-            
-            // データを設定
-            taskToSave.id = taskToSave.id ?? UUID()
-            taskToSave.title = title
-            taskToSave.subjectName = subjectName
-            taskToSave.color = color
-            taskToSave.dueDate = hasDueDate ? dueDate : nil
-            taskToSave.isCompleted = task?.isCompleted ?? false
-            taskToSave.priority = priority.rawValue
-            taskToSave.note = note
-            taskToSave.createdAt = taskToSave.createdAt ?? Date()
-            taskToSave.updatedAt = Date()
-            taskToSave.taskType = taskType.rawValue // 追加：タスクタイプを保存
-            
-            // 保存を実行
-            do {
-                try viewContext.save()
-            } catch {
-                let nsError = error as NSError
-                print("タスクの保存中にエラーが発生しました: \(nsError), \(nsError.userInfo)")
-            }
+        var taskToSave: Task
+        
+        if let existingTask = task {
+            // 既存のタスクを更新
+            taskToSave = existingTask
+        } else {
+            // 新規タスクを作成
+            taskToSave = Task(context: viewContext)
+            taskToSave.id = UUID()
+            taskToSave.createdAt = Date() // もし定義されている場合
+        }
+        
+        // タスク情報を設定
+        taskToSave.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        taskToSave.subjectName = subjectName
+        taskToSave.color = color
+        taskToSave.dueDate = hasDueDate ? dueDate : nil
+        taskToSave.priority = priority.rawValue
+        taskToSave.isCompleted = false
+        taskToSave.note = note
+        taskToSave.taskType = taskType.rawValue // 安全に設定
+        taskToSave.updatedAt = Date() // もし定義されている場合
+        
+        // 保存を実行
+        do {
+            try viewContext.save()
+        } catch {
+            let nsError = error as NSError
+            print("タスクの保存中にエラーが発生しました: \(nsError), \(nsError.userInfo)")
         }
     }
 }

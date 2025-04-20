@@ -2,29 +2,8 @@ import Foundation
 import CoreData
 import SwiftUI
 
-// MARK: - Taskエンティティの基本クラス定義
-@objc(Task)
-public class Task: NSManagedObject, Identifiable {
-    @NSManaged public var id: UUID?
-    @NSManaged public var title: String?
-    @NSManaged public var subjectName: String?
-    @NSManaged public var color: String?
-    @NSManaged public var dueDate: Date?
-    @NSManaged public var isCompleted: Bool
-    @NSManaged public var priority: Int16
-    @NSManaged public var note: String?
-    @NSManaged public var timetable: Timetable?
-    @NSManaged public var createdAt: Date?
-    @NSManaged public var updatedAt: Date?
-    @NSManaged public var taskType: String?  // "homework" または "exam" を格納
-    
-    @nonobjc public class func fetchRequest() -> NSFetchRequest<Task> {
-        return NSFetchRequest<Task>(entityName: "Task")
-    }
-}
-
-// Task エンティティを拡張する
-extension Task {
+// 列挙型を独立した名前空間で定義
+enum TaskEnums {
     // 課題タイプの列挙型
     enum TaskType: String, CaseIterable {
         case homework = "homework"
@@ -50,21 +29,6 @@ extension Task {
             case .exam: return "red"
             }
         }
-    }
-    
-    // 課題タイプのプロパティ
-    var taskTypeEnum: TaskType {
-        get {
-            return TaskType(rawValue: self.taskType ?? "homework") ?? .homework
-        }
-        set {
-            self.taskType = newValue.rawValue
-        }
-    }
-    
-    // 表示用タイトル（アイコンを含む）
-    var displayTitle: String {
-        return "\(taskTypeEnum.title): \(title ?? "")"
     }
     
     // 優先度の列挙型
@@ -132,11 +96,19 @@ extension Task {
             }
         }
     }
+}
+
+// Task エンティティを拡張する
+extension Task {
+    // 表示用タイトル（アイコンを含む）
+    var displayTitle: String {
+        return "\(title ?? "")"
+    }
     
     // 優先度の列挙型にアクセスするプロパティ
-    var priorityEnum: Priority {
+    var priorityEnum: TaskEnums.Priority {
         get {
-            return Priority(rawValue: self.priority) ?? .normal
+            return TaskEnums.Priority(rawValue: self.priority) ?? .normal
         }
         set {
             self.priority = newValue.rawValue
@@ -170,7 +142,7 @@ extension Task {
     }
     
     // 期限のステータス
-    var dueDateStatus: DueDateStatus {
+    var dueDateStatus: TaskEnums.DueDateStatus {
         guard let dueDate = self.dueDate else { return .none }
         
         let now = Date()
@@ -213,9 +185,8 @@ extension Task {
         task.dueDate = Calendar.current.date(byAdding: .day, value: 3, to: Date())
         task.color = "blue"
         task.isCompleted = false
-        task.priority = Priority.normal.rawValue
+        task.priority = TaskEnums.Priority.normal.rawValue
         task.note = "3ページのエッセイ、テーマ：自由"
-        task.taskType = TaskType.homework.rawValue
         return task
     }
 }

@@ -370,7 +370,7 @@ struct TaskManagementView: View {
         NavigationView {
             List {
                 // 課題タイプ選択項目
-                ForEach(Task.TaskType.allCases, id: \.self) { taskType in
+                ForEach(TaskEnums.TaskType.allCases, id: \.self) { taskType in
                     Button(action: {
                         showTaskTypeSheet = false
                         
@@ -426,7 +426,7 @@ struct TaskManagementView: View {
     }
     
     // 新規タスク作成
-    private func createNewTask(subject: String, taskType: Task.TaskType, color: String) -> Task {
+    private func createNewTask(subject: String, taskType: TaskEnums.TaskType, color: String) -> Task {
         let newTask = Task(context: viewContext)
         newTask.id = UUID()
         newTask.subjectName = subject
