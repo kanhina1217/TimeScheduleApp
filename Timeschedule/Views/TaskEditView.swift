@@ -14,9 +14,9 @@ struct TaskEditView: View {
     @State private var color = "blue"
     @State private var dueDate = Date()
     @State private var hasDueDate = false
-    @State private var priority: TaskEnums.Priority = .normal
+    @State private var priority: Task.Priority = .normal
     @State private var note = ""
-    @State private var taskType: TaskEnums.TaskType = .homework // TaskEnums名前空間を使用
+    @State private var taskType: Task.TaskType = .homework // Task名前空間を使用
     
     // 科目選択用の状態変数
     @State private var isSelectingSubject = false
@@ -55,7 +55,7 @@ struct TaskEditView: View {
     }
     
     // 科目名と色を指定して初期化するイニシャライザ
-    init(initialSubject: String, initialColor: String = "blue", taskType: TaskEnums.TaskType = .homework) {
+    init(initialSubject: String, initialColor: String = "blue", taskType: Task.TaskType = .homework) {
         self.task = nil
         _subjectName = State(initialValue: initialSubject)
         _color = State(initialValue: initialColor)
@@ -90,10 +90,10 @@ struct TaskEditView: View {
     var body: some View {
         NavigationView {
             Form {
-                // タスクタイプ選択セクション (新規追加)
+                // タスクタイプ選択セクション
                 Section(header: Text("予定タイプ")) {
                     Picker("タイプ", selection: $taskType) {
-                        ForEach(TaskEnums.TaskType.allCases, id: \.self) { type in
+                        ForEach(Task.TaskType.allCases, id: \.self) { type in
                             HStack {
                                 Image(systemName: type.icon)
                                 Text(type.title)
@@ -177,7 +177,7 @@ struct TaskEditView: View {
                 // 優先度設定
                 Section(header: Text("優先度")) {
                     Picker("優先度", selection: $priority) {
-                        ForEach(TaskEnums.Priority.allCases, id: \.self) { priority in
+                        ForEach(Task.Priority.allCases, id: \.self) { priority in
                             HStack {
                                 Circle()
                                     .fill(priority.color)
@@ -256,11 +256,7 @@ struct TaskEditView: View {
             }
             
             // taskTypeプロパティを安全に参照
-            if let typeString = task.taskType, let type = TaskEnums.TaskType(rawValue: typeString) {
-                taskType = type
-            } else {
-                taskType = .homework // デフォルト値
-            }
+            taskType = task.taskTypeEnum
             
             priority = task.priorityEnum
             note = task.note ?? ""
