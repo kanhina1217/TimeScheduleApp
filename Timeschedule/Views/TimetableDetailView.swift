@@ -69,245 +69,14 @@ struct TimetableDetailView: View {
         NavigationView {
             VStack {
                 if selectMode {
-                    // コマ選択モード
-                    Form {
-                        Section(header: Text("コマを選択")) {
-                            if !isMultiSelectionMode {
-                                // 単一選択モード
-                                Picker("曜日", selection: $selectedDay) {
-                                    ForEach(0..<daysOfWeek.count, id: \.self) { index in
-                                        Text(daysOfWeek[index]).tag(index)
-                                    }
-                                }
-                                
-                                Picker("時限", selection: $selectedPeriod) {
-                                    ForEach(1...defaultPattern.periodCount, id: \.self) { period in
-                                        Text("\(period)限").tag(period)
-                                    }
-                                }
-                                
-                                // 現在のパターンの時間情報を表示
-                                HStack {
-                                    Text("時間帯")
-                                    Spacer()
-                                    VStack(alignment: .trailing) {
-                                        Text("\(defaultPattern.startTimeForPeriod(selectedPeriod))〜\(defaultPattern.endTimeForPeriod(selectedPeriod))")
-                                            .font(.caption)
-                                            .foregroundColor(.gray)
-                                        Text("※時程パターン「\(defaultPattern.displayName)」の場合")
-                                            .font(.caption)
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                                
-                                Button("このコマを選択") {
-                                    // コマが選択されたので入力モードに切り替え
-                                    existingTimetable = fetchExistingTimetable()
-                                    selectMode = false
-                                }
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .foregroundColor(.blue)
-                                
-                                // 複数選択モードに切り替えるボタン
-                                Button("複数のコマを選択する") {
-                                    isMultiSelectionMode = true
-                                    // 選択状態をリセット
-                                    daySelections = Array(repeating: false, count: 7)
-                                    periodSelections = Array(repeating: false, count: 10)
-                                    selectedCells = []
-                                }
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .foregroundColor(.blue)
-                            } else {
-                                // 複数選択モード - 時間割のようなグリッド表示
-                                Text("複数のコマをタップして選択")
-                                    .font(.headline)
-                                    .padding(.bottom, 8)
-                                
-                                // 時間割グリッドを表示
-                                VStack(spacing: 10) {
-                                    // 曜日ヘッダー
-                                    HStack {
-                                        Text("") // 左上の空白セル
-                                            .frame(width: 40)
-                                        
-                                        ForEach(0..<daysOfWeek.count, id: \.self) { day in
-                                            Text(daysOfWeek[day])
-                                                .font(.headline)
-                                                .frame(maxWidth: .infinity)
-                                        }
-                                    }
-                                    
-                                    // 時限行
-                                    ForEach(1...defaultPattern.periodCount, id: \.self) { period in
-                                        HStack {
-                                            // 時限番号
-                                            Text("\(period)")
-                                                .font(.headline)
-                                                .frame(width: 40)
-                                            
-                                            // 曜日ごとのセル
-                                            ForEach(0..<daysOfWeek.count, id: \.self) { day in
-                                                selectionCellView(day: day, period: period)
-                                            }
-                                        }
-                                    }
-                                }
-                                .padding()
-                                
-                                // 選択されたコマの表示
-                                if !selectedCells.isEmpty {
-                                    VStack(alignment: .leading) {
-                                        Text("選択されたコマ： \(selectedCells.count)個")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                        
-                                        ScrollView(.horizontal, showsIndicators: false) {
-                                            HStack {
-                                                ForEach(selectedCells, id: \.self) { cell in
-                                                    Text("\(daysOfWeek[cell.day])\(cell.period)限")
-                                                        .padding(.horizontal, 8)
-                                                        .padding(.vertical, 4)
-                                                        .background(Color.blue.opacity(0.1))
-                                                        .cornerRadius(4)
-                                                }
-                                            }
-                                        }
-                                        .padding(.vertical, 4)
-                                    }
-                                }
-                                
-                                HStack {
-                                    // キャンセルボタン
-                                    Button("キャンセル") {
-                                        isMultiSelectionMode = false
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .foregroundColor(.red)
-                                    
-                                    // 選択完了ボタン
-                                    Button("選択完了") {
-                                        if !selectedCells.isEmpty {
-                                            // 最初のセルを基準にして編集モードに遷移
-                                            let firstCell = selectedCells.first!
-                                            selectedDay = firstCell.day
-                                            selectedPeriod = firstCell.period
-                                            existingTimetable = fetchExistingTimetable(day: firstCell.day, period: firstCell.period)
-                                            selectMode = false
-                                        }
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .foregroundColor(.blue)
-                                    .disabled(selectedCells.isEmpty)
-                                }
-                            }
-                        }
-                    }
-                    .navigationTitle("時間割の追加")
+                    selectionModeView()
                 } else {
-                    // 時間割データ入力モード
-                    Form {
-                        // 基本情報セクション
-                        Section(header: Text("基本情報")) {
-                            if selectedCells.isEmpty {
-                                // 単一コマ選択時の表示
-                                if existingTimetable == nil {
-                                    // 新規作成時はコマ情報を表示
-                                    HStack {
-                                        Text("コマ")
-                                        Spacer()
-                                        Text("\(daysOfWeek[selectedDay])\(selectedPeriod)限")
-                                            .foregroundColor(.gray)
-                                    }
-                                    // 選択されたパターンでの時間帯を表示（情報提供のみ）
-                                    HStack {
-                                        Text("現在の時間帯")
-                                        Spacer()
-                                        Text("\(defaultPattern.startTimeForPeriod(selectedPeriod))〜\(defaultPattern.endTimeForPeriod(selectedPeriod))")
-                                            .foregroundColor(.gray)
-                                    }
-                                } else {
-                                    // 既存データの場合も時間帯を表示
-                                    HStack {
-                                        Text("コマ")
-                                        Spacer()
-                                        Text("\(daysOfWeek[Int(existingTimetable!.dayOfWeek)])\(existingTimetable!.period)限")
-                                            .foregroundColor(.gray)
-                                    }
-                                    // 選択されたパターンでの時間帯を表示（情報提供のみ）
-                                    HStack {
-                                        Text("現在の時間帯")
-                                        Spacer()
-                                        Text("\(defaultPattern.startTimeForPeriod(Int(existingTimetable!.period)))〜\(defaultPattern.endTimeForPeriod(Int(existingTimetable!.period)))")
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                            } else {
-                                // 複数コマ選択時の表示
-                                Text("複数のコマに一括登録（\(selectedCells.count)コマ）")
-                                    .foregroundColor(.blue)
-                                
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack {
-                                        ForEach(selectedCells, id: \.0) { cell in
-                                            Text("\(daysOfWeek[cell.day])\(cell.period)限")
-                                                .padding(.horizontal, 8)
-                                                .padding(.vertical, 4)
-                                                .background(Color.blue.opacity(0.1))
-                                                .cornerRadius(4)
-                                        }
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                            }
-                            
-                            TextField("教科名", text: $subjectName)
-                            TextField("教室", text: $classroom)
-                        }
-                        
-                        // 詳細情報セクション
-                        Section(header: Text("詳細情報")) {
-                            TextField("課題", text: $task)
-                            TextField("教科書", text: $textbook)
-                        }
-                        
-                        // 色選択セクション
-                        Section(header: Text("色")) {
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 10) {
-                                ForEach(availableColors, id: \.self) { color in
-                                    colorCell(color)
-                                }
-                            }
-                            .padding(.vertical, 8)
-                        }
-                        
-                        // 削除ボタンセクション（既存データの場合のみ表示、複数選択時は非表示）
-                        if existingTimetable != nil && selectedCells.isEmpty {
-                            Section {
-                                Button(action: deleteTimetable) {
-                                    Text("削除")
-                                        .foregroundColor(.red)
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                }
-                            }
-                        }
-                    }
-                    .navigationTitle(existingTimetable != nil && selectedCells.isEmpty ? "時間割の編集" : "時間割の追加")
+                    editModeView()
                 }
             }
             .navigationBarItems(
-                leading: Button("キャンセル") {
-                    presentationMode.wrappedValue.dismiss()
-                },
-                trailing: !selectMode ? Button("保存") {
-                    if !selectedCells.isEmpty {
-                        // 複数コマの一括登録
-                        saveMultipleTimetables()
-                    } else {
-                        // 単一コマの保存
-                        saveTimetable()
-                    }
-                } : nil
+                leading: cancelButton,
+                trailing: saveButton
             )
             .onAppear {
                 loadTimetableData()
@@ -315,57 +84,29 @@ struct TimetableDetailView: View {
         }
     }
     
-    // 色選択セル
-    private func colorCell(_ color: String) -> some View {
-        let uiColor: Color = {
-            switch color {
-            case "red": return .red
-            case "blue": return .blue
-            case "green": return .green
-            case "yellow": return .yellow
-            case "purple": return .purple
-            default: return .gray
-            }
-        }()
-        
-        return Circle()
-            .fill(uiColor.opacity(0.7))
-            .frame(width: 40, height: 40)
-            .overlay(
-                Circle()
-                    .stroke(Color.primary, lineWidth: selectedColor == color ? 3 : 0)
-            )
-            .onTapGesture {
-                selectedColor = color
-            }
+    // キャンセルボタン - 共通コンポーネント
+    private var cancelButton: some View {
+        Button("キャンセル") {
+            presentationMode.wrappedValue.dismiss()
+        }
     }
     
-    // 選択セルの表示
-    private func selectionCellView(day: Int, period: Int) -> some View {
-        let isSelected = selectedCells.contains { $0.day == day && $0.period == period }
-        
-        return Button(action: {
-            // セルのタップ処理
-            toggleCellSelection(day: day, period: period)
-        }) {
-            ZStack {
-                // 背景
-                Rectangle()
-                    .fill(isSelected ? Color.blue.opacity(0.3) : Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(isSelected ? Color.blue : Color.gray, lineWidth: isSelected ? 2 : 1)
-                    )
-                
-                // 時程パターン時間の表示（オプション）
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .foregroundColor(.blue)
-                        .font(.system(size: 16, weight: .bold))
+    // 保存ボタン - 条件によって表示
+    private var saveButton: some View {
+        Group {
+            if !selectMode {
+                Button("保存") {
+                    if !selectedCells.isEmpty {
+                        // 複数コマの一括登録
+                        saveMultipleTimetables()
+                    } else {
+                        // 単一コマの保存
+                        saveTimetable()
+                    }
                 }
+            } else {
+                EmptyView()
             }
-            .frame(maxWidth: .infinity, minHeight: 40)
         }
     }
     
@@ -398,10 +139,384 @@ struct TimetableDetailView: View {
         }
     }
     
-    // 複数選択の状態を更新（曜日と時限の組み合わせは使わない）
-    private func updateSelectedCells() {
-        // この関数は使わなくなりました
-        // 代わりにtoggleCellSelectionで個別に選択/解除する
+    // MARK: - 分割したサブビュー
+    
+    // 選択モードビュー
+    private func selectionModeView() -> some View {
+        Form {
+            Section(header: Text("コマを選択")) {
+                if !isMultiSelectionMode {
+                    singleSelectionView()
+                } else {
+                    multiSelectionView()
+                }
+            }
+        }
+        .navigationTitle("時間割の追加")
+    }
+    
+    // 単一選択モードのビュー
+    private func singleSelectionView() -> some View {
+        VStack {
+            // 曜日選択ピッカー
+            Picker("曜日", selection: $selectedDay) {
+                ForEach(0..<daysOfWeek.count, id: \.self) { index in
+                    Text(daysOfWeek[index]).tag(index)
+                }
+            }
+            
+            // 時限選択ピッカー
+            Picker("時限", selection: $selectedPeriod) {
+                let count = defaultPattern.periodCount
+                ForEach(1...count, id: \.self) { period in
+                    Text("\(period)限").tag(period)
+                }
+            }
+            
+            // 時間帯表示
+            timeInfoView()
+            
+            // このコマを選択するボタン
+            Button("このコマを選択") {
+                existingTimetable = fetchExistingTimetable()
+                selectMode = false
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .foregroundColor(.blue)
+            
+            // 複数選択モード切替ボタン
+            Button("複数のコマを選択する") {
+                isMultiSelectionMode = true
+                // 選択状態をリセット
+                daySelections = Array(repeating: false, count: 7)
+                periodSelections = Array(repeating: false, count: 10)
+                selectedCells = []
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .foregroundColor(.blue)
+        }
+    }
+    
+    // 時間帯表示ビュー
+    private func timeInfoView() -> some View {
+        HStack {
+            Text("時間帯")
+            Spacer()
+            VStack(alignment: .trailing) {
+                // 時間表示
+                let startTime = defaultPattern.startTimeForPeriod(selectedPeriod)
+                let endTime = defaultPattern.endTimeForPeriod(selectedPeriod)
+                let timeText = "\(startTime)〜\(endTime)"
+                
+                Text(timeText)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                
+                // パターン名表示
+                let patternText = "※時程パターン「\(defaultPattern.displayName)」の場合"
+                Text(patternText)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+        }
+    }
+    
+    // 複数選択モードのビュー
+    private func multiSelectionView() -> some View {
+        VStack {
+            Text("複数のコマをタップして選択")
+                .font(.headline)
+                .padding(.bottom, 8)
+            
+            // 時間割グリッドを表示
+            timetableGridView()
+                .padding()
+            
+            // 選択されたコマの表示
+            selectedCellsView()
+            
+            // 操作ボタン
+            HStack {
+                // キャンセルボタン
+                Button("キャンセル") {
+                    isMultiSelectionMode = false
+                }
+                .frame(maxWidth: .infinity)
+                .foregroundColor(.red)
+                
+                // 選択完了ボタン
+                Button("選択完了") {
+                    if !selectedCells.isEmpty {
+                        // 最初のセルを基準にして編集モードに遷移
+                        let firstCell = selectedCells.first!
+                        selectedDay = firstCell.day
+                        selectedPeriod = firstCell.period
+                        existingTimetable = fetchExistingTimetable(day: firstCell.day, period: firstCell.period)
+                        selectMode = false
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .foregroundColor(.blue)
+                .disabled(selectedCells.isEmpty)
+            }
+        }
+    }
+    
+    // 時間割グリッドビュー
+    private func timetableGridView() -> some View {
+        VStack(spacing: 10) {
+            // 曜日ヘッダー行
+            HStack {
+                Text("") // 左上の空白セル
+                    .frame(width: 40)
+                
+                ForEach(0..<daysOfWeek.count, id: \.self) { day in
+                    Text(daysOfWeek[day])
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            
+            // 時限行
+            ForEach(1...defaultPattern.periodCount, id: \.self) { period in
+                HStack {
+                    // 時限番号
+                    Text("\(period)")
+                        .font(.headline)
+                        .frame(width: 40)
+                    
+                    // 曜日ごとのセル
+                    ForEach(0..<daysOfWeek.count, id: \.self) { day in
+                        selectionCellView(day: day, period: period)
+                    }
+                }
+            }
+        }
+    }
+    
+    // 選択されたコマ一覧表示
+    private func selectedCellsView() -> some View {
+        Group {
+            if !selectedCells.isEmpty {
+                VStack(alignment: .leading) {
+                    Text("選択されたコマ： \(selectedCells.count)個")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(selectedCells, id: \.self) { cell in
+                                Text("\(daysOfWeek[cell.day])\(cell.period)限")
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(4)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            } else {
+                EmptyView()
+            }
+        }
+    }
+    
+    // 選択セルの表示
+    private func selectionCellView(day: Int, period: Int) -> some View {
+        let isSelected = selectedCells.contains { $0.day == day && $0.period == period }
+        
+        return Button(action: {
+            // セルのタップ処理
+            toggleCellSelection(day: day, period: period)
+        }) {
+            ZStack {
+                // 背景
+                Rectangle()
+                    .fill(isSelected ? Color.blue.opacity(0.3) : Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(isSelected ? Color.blue : Color.gray, lineWidth: isSelected ? 2 : 1)
+                    )
+                
+                // チェックマーク（選択時のみ表示）
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.blue)
+                        .font(.system(size: 16, weight: .bold))
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 40)
+        }
+    }
+    
+    // 編集モードビュー
+    private func editModeView() -> some View {
+        Form {
+            // 基本情報セクション
+            Section(header: Text("基本情報")) {
+                basicInfoSection()
+                
+                TextField("教科名", text: $subjectName)
+                TextField("教室", text: $classroom)
+            }
+            
+            // 詳細情報セクション
+            Section(header: Text("詳細情報")) {
+                TextField("課題", text: $task)
+                TextField("教科書", text: $textbook)
+            }
+            
+            // 色選択セクション
+            Section(header: Text("色")) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 10) {
+                    ForEach(availableColors, id: \.self) { color in
+                        colorCell(color)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+            
+            // 削除ボタンセクション（既存データの場合のみ表示、複数選択時は非表示）
+            deleteButtonSection()
+        }
+        .navigationTitle(getEditModeTitle())
+    }
+    
+    // 編集モードのタイトルを取得
+    private func getEditModeTitle() -> String {
+        if existingTimetable != nil && selectedCells.isEmpty {
+            return "時間割の編集"
+        } else {
+            return "時間割の追加"
+        }
+    }
+    
+    // 基本情報セクションの内容
+    private func basicInfoSection() -> some View {
+        Group {
+            if selectedCells.isEmpty {
+                singleCellInfoView()
+            } else {
+                multipleCellInfoView()
+            }
+        }
+    }
+    
+    // 単一コマ選択時の情報表示
+    private func singleCellInfoView() -> some View {
+        Group {
+            if existingTimetable == nil {
+                // 新規作成時のコマ情報表示
+                VStack {
+                    HStack {
+                        Text("コマ")
+                        Spacer()
+                        Text("\(daysOfWeek[selectedDay])\(selectedPeriod)限")
+                            .foregroundColor(.gray)
+                    }
+                    
+                    HStack {
+                        Text("現在の時間帯")
+                        Spacer()
+                        let startTime = defaultPattern.startTimeForPeriod(selectedPeriod)
+                        let endTime = defaultPattern.endTimeForPeriod(selectedPeriod)
+                        Text("\(startTime)〜\(endTime)")
+                            .foregroundColor(.gray)
+                    }
+                }
+            } else {
+                // 既存データの場合の情報表示
+                VStack {
+                    HStack {
+                        Text("コマ")
+                        Spacer()
+                        if let timetable = existingTimetable {
+                            let day = Int(timetable.dayOfWeek)
+                            let period = timetable.period
+                            Text("\(daysOfWeek[day])\(period)限")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    
+                    HStack {
+                        Text("現在の時間帯")
+                        Spacer()
+                        if let timetable = existingTimetable {
+                            let period = Int(timetable.period)
+                            let startTime = defaultPattern.startTimeForPeriod(period)
+                            let endTime = defaultPattern.endTimeForPeriod(period)
+                            Text("\(startTime)〜\(endTime)")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 複数コマ選択時の情報表示
+    private func multipleCellInfoView() -> some View {
+        VStack {
+            Text("複数のコマに一括登録（\(selectedCells.count)コマ）")
+                .foregroundColor(.blue)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack {
+                    ForEach(selectedCells, id: \.0) { cell in
+                        Text("\(daysOfWeek[cell.day])\(cell.period)限")
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(4)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+    
+    // 削除ボタンセクション
+    private func deleteButtonSection() -> some View {
+        Group {
+            if existingTimetable != nil && selectedCells.isEmpty {
+                Section {
+                    Button(action: deleteTimetable) {
+                        Text("削除")
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                }
+            } else {
+                EmptyView()
+            }
+        }
+    }
+    
+    // 色選択セル
+    private func colorCell(_ color: String) -> some View {
+        let uiColor: Color = {
+            switch color {
+            case "red": return .red
+            case "blue": return .blue
+            case "green": return .green
+            case "yellow": return .yellow
+            case "purple": return .purple
+            default: return .gray
+            }
+        }()
+        
+        return Circle()
+            .fill(uiColor.opacity(0.7))
+            .frame(width: 40, height: 40)
+            .overlay(
+                Circle()
+                    .stroke(Color.primary, lineWidth: selectedColor == color ? 3 : 0)
+            )
+            .onTapGesture {
+                selectedColor = color
+            }
     }
     
     // 既存のデータを取得（パターンに依存しない）
