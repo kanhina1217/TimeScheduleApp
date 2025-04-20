@@ -48,6 +48,23 @@ struct MainView: View {
                     .padding()
                 }
                 
+                // タブ切り替えボタン（時間割と課題管理）
+                HStack {
+                    NavigationLink(destination: TaskManagementView()) {
+                        HStack {
+                            Image(systemName: "checklist")
+                            Text("課題管理")
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(8)
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.horizontal)
+                
                 // 時間割表示
                 ScrollView {
                     VStack(spacing: 10) {

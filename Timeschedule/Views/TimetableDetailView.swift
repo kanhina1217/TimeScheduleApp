@@ -420,6 +420,31 @@ struct TimetableDetailView: View {
                 .padding(.vertical, 8)
             }
             
+            // 科目関連の課題を表示するセクション（科目名が入力されている場合のみ表示）
+            if !subjectName.isEmpty {
+                Section(header: Text("この科目の課題")) {
+                    NavigationLink(destination: 
+                        TaskManagementView(filterSubject: subjectName)
+                    ) {
+                        HStack {
+                            Image(systemName: "list.bullet.clipboard")
+                                .foregroundColor(.blue)
+                            Text("\(subjectName)の課題を表示")
+                        }
+                    }
+                    
+                    NavigationLink(destination: 
+                        TaskEditView(initialSubject: subjectName, initialColor: selectedColor)
+                    ) {
+                        HStack {
+                            Image(systemName: "plus.circle")
+                                .foregroundColor(.green)
+                            Text("\(subjectName)の課題を追加")
+                        }
+                    }
+                }
+            }
+            
             // 削除ボタンセクション（既存データの場合のみ表示、複数選択時は非表示）
             deleteButtonSection()
         }
