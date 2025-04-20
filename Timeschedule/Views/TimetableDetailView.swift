@@ -119,84 +119,61 @@ struct TimetableDetailView: View {
                                 .frame(maxWidth: .infinity, alignment: .center)
                                 .foregroundColor(.blue)
                             } else {
-                                // 複数選択モード
-                                Text("複数のコマを選択できます")
+                                // 複数選択モード - 時間割のようなグリッド表示
+                                Text("複数のコマをタップして選択")
                                     .font(.headline)
-                                    .padding(.bottom, 4)
+                                    .padding(.bottom, 8)
                                 
-                                // 曜日選択
-                                VStack(alignment: .leading) {
-                                    Text("曜日を選択")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                                // 時間割グリッドを表示
+                                VStack(spacing: 10) {
+                                    // 曜日ヘッダー
+                                    HStack {
+                                        Text("") // 左上の空白セル
+                                            .frame(width: 40)
+                                        
+                                        ForEach(0..<daysOfWeek.count, id: \.self) { day in
+                                            Text(daysOfWeek[day])
+                                                .font(.headline)
+                                                .frame(maxWidth: .infinity)
+                                        }
+                                    }
                                     
-                                    ScrollView(.horizontal, showsIndicators: false) {
+                                    // 時限行
+                                    ForEach(1...defaultPattern.periodCount, id: \.self) { period in
                                         HStack {
-                                            ForEach(0..<daysOfWeek.count) { day in
-                                                Button(action: {
-                                                    daySelections[day].toggle()
-                                                    updateSelectedCells()
-                                                }) {
-                                                    Text(daysOfWeek[day])
-                                                        .padding(.horizontal, 12)
-                                                        .padding(.vertical, 8)
-                                                        .background(daySelections[day] ? Color.blue : Color.gray.opacity(0.2))
-                                                        .foregroundColor(daySelections[day] ? .white : .primary)
-                                                        .cornerRadius(8)
-                                                }
+                                            // 時限番号
+                                            Text("\(period)")
+                                                .font(.headline)
+                                                .frame(width: 40)
+                                            
+                                            // 曜日ごとのセル
+                                            ForEach(0..<daysOfWeek.count, id: \.self) { day in
+                                                selectionCellView(day: day, period: period)
                                             }
                                         }
                                     }
-                                    .padding(.vertical, 4)
                                 }
-                                
-                                // 時限選択
-                                VStack(alignment: .leading) {
-                                    Text("時限を選択")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                    
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack {
-                                            ForEach(1...defaultPattern.periodCount, id: \.self) { period in
-                                                Button(action: {
-                                                    periodSelections[period-1].toggle()
-                                                    updateSelectedCells()
-                                                }) {
-                                                    Text("\(period)限")
-                                                        .padding(.horizontal, 12)
-                                                        .padding(.vertical, 8)
-                                                        .background(periodSelections[period-1] ? Color.blue : Color.gray.opacity(0.2))
-                                                        .foregroundColor(periodSelections[period-1] ? .white : .primary)
-                                                        .cornerRadius(8)
-                                                }
-                                            }
-                                        }
-                                    }
-                                    .padding(.vertical, 4)
-                                }
+                                .padding()
                                 
                                 // 選択されたコマの表示
                                 if !selectedCells.isEmpty {
                                     VStack(alignment: .leading) {
-                                        Text("選択されたコマ")
+                                        Text("選択されたコマ： \(selectedCells.count)個")
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
                                         
-                                        ScrollView {
-                                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                                                ForEach(selectedCells, id: \.0) { cell in
-                                                    HStack {
-                                                        Text("\(daysOfWeek[cell.day])\(cell.period)限")
-                                                            .padding(.horizontal, 8)
-                                                            .padding(.vertical, 4)
-                                                            .background(Color.blue.opacity(0.1))
-                                                            .cornerRadius(4)
-                                                    }
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack {
+                                                ForEach(selectedCells, id: \.self) { cell in
+                                                    Text("\(daysOfWeek[cell.day])\(cell.period)限")
+                                                        .padding(.horizontal, 8)
+                                                        .padding(.vertical, 4)
+                                                        .background(Color.blue.opacity(0.1))
+                                                        .cornerRadius(4)
                                                 }
                                             }
                                         }
-                                        .frame(height: 100)
+                                        .padding(.vertical, 4)
                                     }
                                 }
                                 
@@ -363,20 +340,68 @@ struct TimetableDetailView: View {
             }
     }
     
-    // 複数選択の状態を更新
-    private func updateSelectedCells() {
-        selectedCells = []
+    // 選択セルの表示
+    private func selectionCellView(day: Int, period: Int) -> some View {
+        let isSelected = selectedCells.contains { $0.day == day && $0.period == period }
         
-        // 選択された曜日と時限の組み合わせをすべて生成
-        for day in 0..<daySelections.count {
-            if daySelections[day] {
-                for period in 0..<periodSelections.count {
-                    if periodSelections[period] && period < defaultPattern.periodCount {
-                        selectedCells.append((day: day, period: period + 1))
-                    }
+        return Button(action: {
+            // セルのタップ処理
+            toggleCellSelection(day: day, period: period)
+        }) {
+            ZStack {
+                // 背景
+                Rectangle()
+                    .fill(isSelected ? Color.blue.opacity(0.3) : Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(isSelected ? Color.blue : Color.gray, lineWidth: isSelected ? 2 : 1)
+                    )
+                
+                // 時程パターン時間の表示（オプション）
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.blue)
+                        .font(.system(size: 16, weight: .bold))
                 }
             }
+            .frame(maxWidth: .infinity, minHeight: 40)
         }
+    }
+    
+    // セルの選択状態を切り替え
+    private func toggleCellSelection(day: Int, period: Int) {
+        let cell = (day: day, period: period)
+        
+        if let index = selectedCells.firstIndex(where: { $0.day == day && $0.period == period }) {
+            // すでに選択されている場合は削除
+            selectedCells.remove(at: index)
+        } else {
+            // 選択されていない場合は追加
+            selectedCells.append(cell)
+        }
+        
+        // 曜日と時限の選択状態も更新（必要であれば）
+        updateSelectionStates()
+    }
+    
+    // 選択状態の更新（曜日と時限の選択状態を実際の選択に合わせる）
+    private func updateSelectionStates() {
+        // 曜日選択状態の更新
+        for day in 0..<daySelections.count {
+            daySelections[day] = selectedCells.contains { $0.day == day }
+        }
+        
+        // 時限選択状態の更新
+        for period in 1...defaultPattern.periodCount {
+            periodSelections[period-1] = selectedCells.contains { $0.period == period }
+        }
+    }
+    
+    // 複数選択の状態を更新（曜日と時限の組み合わせは使わない）
+    private func updateSelectedCells() {
+        // この関数は使わなくなりました
+        // 代わりにtoggleCellSelectionで個別に選択/解除する
     }
     
     // 既存のデータを取得（パターンに依存しない）
