@@ -1,57 +1,6 @@
 import SwiftUI
 import CoreData
 
-// MARK: - CoreDataエンティティの型定義
-// これらの定義はCoreDataモデルから自動生成されるクラスをサポートします
-@objcMembers public class Timetable: NSManagedObject {
-    @NSManaged public var id: UUID?
-    @NSManaged public var dayOfWeek: Int16
-    @NSManaged public var period: Int16
-    @NSManaged public var subjectName: String?
-    @NSManaged public var classroom: String?
-    @NSManaged public var task: String?
-    @NSManaged public var textbook: String?
-    @NSManaged public var color: String?
-    @NSManaged public var pattern: Pattern?
-    @NSManaged public var tasks: NSSet?
-}
-
-@objcMembers public class Pattern: NSManagedObject {
-    @NSManaged public var id: UUID?
-    @NSManaged public var name: String?
-    @NSManaged public var isDefault: Bool
-    @NSManaged public var periodTimes: NSObject?
-    
-    // 時程パターンのメソッド
-    func startTimeForPeriod(_ period: Int) -> String {
-        guard let times = periodTimes as? [[String: String]], 
-              period > 0, period <= times.count else {
-            return "--:--"
-        }
-        return times[period-1]["startTime"] ?? "--:--"
-    }
-    
-    func endTimeForPeriod(_ period: Int) -> String {
-        guard let times = periodTimes as? [[String: String]], 
-              period > 0, period <= times.count else {
-            return "--:--"
-        }
-        return times[period-1]["endTime"] ?? "--:--"
-    }
-    
-    var displayName: String {
-        return name ?? "不明なパターン"
-    }
-    
-    var periodTimeArray: [[String: String]] {
-        return periodTimes as? [[String: String]] ?? []
-    }
-    
-    var periodCount: Int {
-        return periodTimeArray.count
-    }
-}
-
 // 時間割のコマ位置を表す構造体 (Hashableに準拠)
 struct CellPosition: Hashable {
     let day: Int
