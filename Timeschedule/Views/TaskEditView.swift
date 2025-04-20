@@ -1,19 +1,6 @@
 import SwiftUI
 import CoreData
 
-// MARK: - CoreDataエンティティの型定義
-// これらの定義はCoreDataモデルから自動生成されるクラスをサポートします
-@objcMembers public class Timetable: NSManagedObject {
-    @NSManaged public var id: UUID?
-    @NSManaged public var dayOfWeek: Int16
-    @NSManaged public var period: Int16
-    @NSManaged public var subjectName: String?
-    @NSManaged public var classroom: String?
-    @NSManaged public var task: String?
-    @NSManaged public var textbook: String?
-    @NSManaged public var color: String?
-}
-
 struct TaskEditView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.presentationMode) private var presentationMode
@@ -77,14 +64,24 @@ struct TaskEditView: View {
     init(initialSubjectName: String) {
         self.task = nil
         _subjectName = State(initialValue: initialSubjectName)
+        _color = State(initialValue: "blue") // デフォルトの色を設定
+    }
+    
+    // 科目情報を事前に取得する代わりに、onAppear時に処理するように修正
+    private func setupInitialSubjectColor(_ subjectName: String) {
+        // 時間割から科目情報を取得して色を設定する処理
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Timetable")
+        fetchRequest.predicate = NSPredicate(format: "subjectName == %@", subjectName)
+        fetchRequest.fetchLimit = 1
         
-        // 科目名に対応する色を検索するためにTaskEditViewの初期化後に実行
-        DispatchQueue.main.async {
-            self.loadSubjects()
-            // 読み込んだ科目一覧から対応する色を検索
-            if let subject = self.subjects.first(where: { $0.name == initialSubjectName }) {
-                self.color = subject.color
+        do {
+            if let results = try viewContext.fetch(fetchRequest) as? [NSManagedObject],
+               let timetable = results.first,
+               let foundColor = timetable.value(forKey: "color") as? String {
+                self.color = foundColor
             }
+        } catch {
+            print("科目色の検索に失敗しました: \(error)")
         }
     }
     
@@ -105,7 +102,7 @@ struct TaskEditView: View {
                                 }
                             }
                             .pickerStyle(MenuPickerStyle())
-                            .onChange(of: subjectName) { newValue in
+                            .onChange(of: subjectName) { oldValue, newValue in
                                 // 科目名が変更されたら、対応する色も自動的に設定
                                 if let selectedSubject = subjects.first(where: { $0.name == newValue }) {
                                     color = selectedSubject.color
@@ -231,28 +228,33 @@ struct TaskEditView: View {
         
         // 科目一覧を読み込む
         loadSubjects()
+        
+        // 初期科目の色を設定
+        setupInitialSubjectColor(subjectName)
     }
     
     // 既存の科目一覧を読み込む（時間割から）
     private func loadSubjects() {
-        // NSFetchRequestResultからTimetableへの型キャストを行う
+        // 時間割から科目情報を取得する
         let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Timetable")
         fetchRequest.predicate = NSPredicate(format: "subjectName != nil")
         
         do {
-            let timetables = try viewContext.fetch(fetchRequest) as? [Timetable]
-            var subjectDict = [String: String]() // 科目名をキー、色を値とする辞書
-            
-            for timetable in timetables ?? [] {
-                if let subjectName = timetable.subjectName, !subjectName.isEmpty {
-                    subjectDict[subjectName] = timetable.color ?? "blue"
+            if let timetables = try viewContext.fetch(fetchRequest) as? [NSManagedObject] {
+                var subjectDict = [String: String]() // 科目名をキー、色を値とする辞書
+                
+                for timetable in timetables {
+                    if let subjectName = timetable.value(forKey: "subjectName") as? String,
+                       !subjectName.isEmpty {
+                        let color = timetable.value(forKey: "color") as? String ?? "blue"
+                        subjectDict[subjectName] = color
+                    }
                 }
+                
+                // 辞書から重複のない科目情報の配列を作成
+                subjects = subjectDict.map { SubjectInfo(name: $0.key, color: $0.value) }
+                    .sorted { $0.name < $1.name }
             }
-            
-            // 辞書から重複のない科目情報の配列を作成
-            subjects = subjectDict.map { SubjectInfo(name: $0.key, color: $0.value) }
-                .sorted { $0.name < $1.name }
-            
         } catch {
             print("科目情報の読み込みに失敗しました: \(error)")
         }

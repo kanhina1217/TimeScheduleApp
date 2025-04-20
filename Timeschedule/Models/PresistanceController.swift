@@ -20,6 +20,11 @@ class ArrayTransformer: NSSecureUnarchiveFromDataTransformer {
     }
 }
 
+// アプリケーション起動時にArrayTransformerを登録するための初期化コード
+extension NSValueTransformerName {
+    static let arrayTransformerName = NSValueTransformerName(rawValue: "ArrayTransformer")
+}
+
 struct PersistenceController {
     // シングルトンインスタンス
     static let shared = PersistenceController()
@@ -29,14 +34,16 @@ struct PersistenceController {
     
     // 初期化処理
     init(inMemory: Bool = false) {
-        // カスタムトランスフォーマーの登録
-        ArrayTransformer.register()
-        
+        // まずcontainerプロパティを初期化
         container = NSPersistentContainer(name: "TimeScheduleData")
         
+        // その後で他のメソッドを呼び出し
         if inMemory {
             container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
         }
+        
+        // カスタムトランスフォーマーを確実に登録（selfが参照可能になった後に呼び出し）
+        registerValueTransformers()
         
         container.loadPersistentStores(completionHandler: { (storeDescription, error) in
             if let error = error as NSError? {
@@ -48,6 +55,22 @@ struct PersistenceController {
         // 自動マージポリシーの設定
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        
+        // リレーションシップのエラーを修正するためのカスタムコード
+        setupRelationships()
+    }
+    
+    // カスタムトランスフォーマーを登録
+    private func registerValueTransformers() {
+        // 既存のトランスフォーマーを確認し、なければ登録
+        if ValueTransformer(forName: .arrayTransformerName) == nil {
+            ArrayTransformer.register()
+        }
+    }
+    
+    // リレーションシップのエラーを修正するための処理
+    private func setupRelationships() {
+        // ここに必要な場合、リレーションシップを修正するコードを追加
     }
     
     // プレビュー用のサンプルデータを含むコントローラ
@@ -56,13 +79,15 @@ struct PersistenceController {
         let viewContext = result.container.viewContext
         
         // サンプルデータの作成
-        createSampleData(in: viewContext)
+        SampleDataCreator.createSampleData(in: viewContext)
         
         return result
     }()
-    
+}
+
+struct SampleDataCreator {
     // サンプルデータの作成
-    private static func createSampleData(in context: NSManagedObjectContext) {
+    static func createSampleData(in context: NSManagedObjectContext) {
         // 時程パターンのサンプル
         let normalPattern = Pattern(context: context)
         normalPattern.id = UUID()

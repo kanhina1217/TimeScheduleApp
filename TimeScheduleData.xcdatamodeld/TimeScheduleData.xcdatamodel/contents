@@ -10,7 +10,8 @@
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="isDefault" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="name" optional="YES" attributeType="String"/>
-        <attribute name="periodTimes" optional="YES" attributeType="Transformable"/>
+        <attribute name="periodTimes" optional="YES" attributeType="Transformable" valueTransformerName="PeriodTimesValueTransformer"/>
+        <relationship name="timetables" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Timetable" inverseName="pattern" inverseEntity="Timetable"/>
     </entity>
     <entity name="Subject" representedClassName="Subject" syncable="YES" codeGenerationType="class">
         <attribute name="color" optional="YES" attributeType="String"/>
@@ -18,7 +19,7 @@
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="textbook" optional="YES" attributeType="String"/>
     </entity>
-    <entity name="Task" representedClassName="Task" syncable="YES" codeGenerationType="class">
+    <entity name="Task" representedClassName="Task" syncable="YES">
         <attribute name="color" optional="YES" attributeType="String"/>
         <attribute name="dueDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
@@ -27,7 +28,7 @@
         <attribute name="priority" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="subjectName" optional="YES" attributeType="String"/>
         <attribute name="title" optional="YES" attributeType="String"/>
-        <relationship name="timetable" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Timetable"/>
+        <relationship name="timetable" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Timetable" inverseName="tasks" inverseEntity="Timetable"/>
     </entity>
     <entity name="Timetable" representedClassName="Timetable" syncable="YES" codeGenerationType="class">
         <attribute name="classroom" optional="YES" attributeType="String"/>
@@ -38,7 +39,7 @@
         <attribute name="subjectName" optional="YES" attributeType="String"/>
         <attribute name="task" optional="YES" attributeType="String"/>
         <attribute name="textbook" optional="YES" attributeType="String"/>
-        <relationship name="pattern" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Pattern"/>
+        <relationship name="pattern" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Pattern" inverseName="timetables" inverseEntity="Pattern"/>
         <relationship name="tasks" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Task" inverseName="timetable" inverseEntity="Task"/>
     </entity>
 </model>

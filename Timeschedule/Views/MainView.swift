@@ -4,8 +4,9 @@ import CoreData
 struct MainView: View {
     @Environment(\.managedObjectContext) private var viewContext
     
-    // パターンのFetchRequest
+    // パターンのFetchRequest - 明示的に型を指定
     @FetchRequest(
+        entity: Pattern.entity(),
         sortDescriptors: [
             NSSortDescriptor(keyPath: \Pattern.isDefault, ascending: false),
             NSSortDescriptor(keyPath: \Pattern.name, ascending: true)
@@ -13,8 +14,9 @@ struct MainView: View {
         animation: .default)
     private var patterns: FetchedResults<Pattern>
     
-    // 時間割データのFetchRequest
+    // 時間割データのFetchRequest - 明示的に型を指定
     @FetchRequest(
+        entity: Timetable.entity(),
         sortDescriptors: [
             NSSortDescriptor(keyPath: \Timetable.dayOfWeek, ascending: true),
             NSSortDescriptor(keyPath: \Timetable.period, ascending: true)

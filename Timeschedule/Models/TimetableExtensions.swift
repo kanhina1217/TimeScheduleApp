@@ -11,7 +11,7 @@ import CoreData
  */
 
 // MARK: - エンティティ拡張
-// Timetableエンティティの拡張（クラス定義を削除）
+// Timetableエンティティの拡張
 extension Timetable {
     // 曜日を文字列で取得
     var dayOfWeekString: String {
@@ -40,7 +40,7 @@ extension Timetable {
     }
 }
 
-// Patternエンティティの拡張（クラス定義を削除）
+// Patternエンティティの拡張
 extension Pattern {
     var displayName: String {
         return name ?? "不明なパターン"
@@ -80,7 +80,7 @@ extension Pattern {
     }
 }
 
-// Subjectエンティティの拡張（クラス定義を削除）
+// Subjectエンティティの拡張
 extension Subject {
     var displayColor: Color {
         guard let colorName = color else { return .gray }
@@ -96,7 +96,7 @@ extension Subject {
     }
 }
 
-// Attendanceエンティティの拡張（クラス定義を削除）
+// Attendanceエンティティの拡張
 extension Attendance {
     var statusString: String {
         return isPresent ? "出席" : "欠席"

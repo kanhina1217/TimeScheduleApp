@@ -2,7 +2,7 @@ import Foundation
 import CoreData
 import SwiftUI
 
-// Task エンティティを拡張するのみ（クラス定義は削除）
+// Task エンティティを拡張する
 extension Task {
     // 優先度の列挙型
     enum Priority: Int16, CaseIterable {
