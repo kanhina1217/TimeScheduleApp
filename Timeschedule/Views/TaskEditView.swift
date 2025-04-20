@@ -1,6 +1,19 @@
 import SwiftUI
 import CoreData
 
+// MARK: - CoreDataエンティティの型定義
+// これらの定義はCoreDataモデルから自動生成されるクラスをサポートします
+@objcMembers public class Timetable: NSManagedObject {
+    @NSManaged public var id: UUID?
+    @NSManaged public var dayOfWeek: Int16
+    @NSManaged public var period: Int16
+    @NSManaged public var subjectName: String?
+    @NSManaged public var classroom: String?
+    @NSManaged public var task: String?
+    @NSManaged public var textbook: String?
+    @NSManaged public var color: String?
+}
+
 struct TaskEditView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.presentationMode) private var presentationMode
