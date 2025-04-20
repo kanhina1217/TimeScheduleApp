@@ -209,17 +209,21 @@ struct TaskManagementView: View {
                             .cornerRadius(8)
                         }
                         
-                        // 課題/テストフィルター
-                        Picker("タイプ", selection: $selectedTaskType) {
-                            ForEach(TaskTypeFilter.allCases) { taskType in
-                                HStack {
-                                    Image(systemName: taskType.icon)
-                                    Text(taskType.rawValue)
-                                }.tag(taskType)
+                        // 課題/テストフィルター - 修正版
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("タイプ")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 4)
+                            
+                            Picker("", selection: $selectedTaskType) {
+                                ForEach(TaskTypeFilter.allCases) { taskType in
+                                    Text(taskType.rawValue).tag(taskType)
+                                }
                             }
+                            .pickerStyle(SegmentedPickerStyle())
+                            .frame(width: 220)
                         }
-                        .pickerStyle(SegmentedPickerStyle())
-                        .frame(width: 220)
                         
                         // 科目フィルター（選択時のみ表示）
                         if let selectedSubject = selectedSubject {
