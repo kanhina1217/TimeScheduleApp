@@ -117,9 +117,9 @@ struct TaskManagementView: View {
             case .all:
                 matchesTaskType = true
             case .homework:
-                matchesTaskType = task.taskTypeEnum == .homework
+                matchesTaskType = task.taskType == Task.TaskType.homework.rawValue
             case .exam:
-                matchesTaskType = task.taskTypeEnum == .exam
+                matchesTaskType = task.taskType == Task.TaskType.exam.rawValue
             }
             
             // 期限でフィルタリング
