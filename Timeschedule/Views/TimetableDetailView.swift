@@ -168,7 +168,7 @@ struct TimetableDetailView: View {
     
     // 単一選択モードのビュー
     private func singleSelectionView() -> some View {
-        VStack {
+        Group {
             // 曜日選択ピッカー
             Picker("曜日", selection: $selectedDay) {
                 ForEach(0..<daysOfWeek.count, id: \.self) { index in
@@ -187,24 +187,28 @@ struct TimetableDetailView: View {
             // 時間帯表示
             timeInfoView()
             
-            // このコマを選択するボタン
-            Button("このコマを選択") {
+            // このコマを選択するボタン - 独立させる
+            Button(action: {
                 existingTimetable = fetchExistingTimetable()
                 selectMode = false
+            }) {
+                Text("このコマを選択")
+                    .foregroundColor(.blue)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
-            .foregroundColor(.blue)
+            .buttonStyle(BorderlessButtonStyle()) // タッチ領域を確保
             
-            // 複数選択モード切替ボタン
-            Button("複数のコマを選択する") {
+            // 複数選択モード切替ボタン - 独立させる
+            Button(action: {
                 isMultiSelectionMode = true
                 // 選択状態をリセット
                 daySelections = Array(repeating: false, count: 7)
                 periodSelections = Array(repeating: false, count: 10)
                 selectedCells = []
+            }) {
+                Text("複数のコマを選択する")
+                    .foregroundColor(.blue)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
-            .foregroundColor(.blue)
+            .buttonStyle(BorderlessButtonStyle()) // タッチ領域を確保
         }
     }
     
