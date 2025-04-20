@@ -92,19 +92,18 @@ struct TaskEditView: View {
             Form {
                 // タスクタイプ選択セクション
                 Section(header: Text("予定タイプ")) {
-                    Picker("タイプ", selection: $taskType) {
-                        ForEach(Task.TaskType.allCases, id: \.self) { type in
-                            HStack {
-                                Image(systemName: type.icon)
-                                Text(type.title)
-                            }.tag(type)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Picker("", selection: $taskType) {
+                            ForEach(Task.TaskType.allCases, id: \.self) { type in
+                                Text(type.title).tag(type)
+                            }
                         }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .onChange(of: taskType) { oldValue, newValue in
-                        // タイプが変更されたら、デフォルトの色を設定
-                        if color == oldValue.defaultColor {
-                            color = newValue.defaultColor
+                        .pickerStyle(SegmentedPickerStyle())
+                        .onChange(of: taskType) { oldValue, newValue in
+                            // タイプが変更されたら、デフォルトの色を設定
+                            if color == oldValue.defaultColor {
+                                color = newValue.defaultColor
+                            }
                         }
                     }
                 }
@@ -176,18 +175,14 @@ struct TaskEditView: View {
                 
                 // 優先度設定
                 Section(header: Text("優先度")) {
-                    Picker("優先度", selection: $priority) {
-                        ForEach(Task.Priority.allCases, id: \.self) { priority in
-                            HStack {
-                                Circle()
-                                    .fill(priority.color)
-                                    .frame(width: 10, height: 10)
-                                Text(priority.title)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Picker("", selection: $priority) {
+                            ForEach(Task.Priority.allCases, id: \.self) { priority in
+                                Text(priority.title).tag(priority)
                             }
-                            .tag(priority)
                         }
+                        .pickerStyle(SegmentedPickerStyle())
                     }
-                    .pickerStyle(SegmentedPickerStyle())
                 }
                 
                 // メモ入力
