@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5F78904C2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 5F78904A2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld */; };
 		5F78904F2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 5F78904D2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld */; };
 /* End PBXBuildFile section */
 
@@ -32,7 +31,6 @@
 		5F5C00722DB129E200B36824 /* Timeschedule.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Timeschedule.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F5C007F2DB129E400B36824 /* TimescheduleTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TimescheduleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F5C00892DB129E400B36824 /* TimescheduleUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TimescheduleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		5F78904B2DB13B48003A50B1 /* TimeScheduleData.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = TimeScheduleData.xcdatamodel; sourceTree = "<group>"; };
 		5F78904E2DB13B48003A50B1 /* TimeScheduleData.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = TimeScheduleData.xcdatamodel; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -87,7 +85,6 @@
 				5F5C008C2DB129E400B36824 /* TimescheduleUITests */,
 				5F5C00732DB129E200B36824 /* Products */,
 				5F78904D2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld */,
-				5F78904A2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld */,
 			);
 			sourceTree = "<group>";
 		};
@@ -245,7 +242,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5F78904C2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld in Sources */,
 				5F78904F2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -569,16 +565,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCVersionGroup section */
-		5F78904A2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld */ = {
-			isa = XCVersionGroup;
-			children = (
-				5F78904B2DB13B48003A50B1 /* TimeScheduleData.xcdatamodel */,
-			);
-			currentVersion = 5F78904B2DB13B48003A50B1 /* TimeScheduleData.xcdatamodel */;
-			path = TimeScheduleData.xcdatamodeld;
-			sourceTree = "<group>";
-			versionGroupType = wrapper.xcdatamodel;
-		};
 		5F78904D2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld */ = {
 			isa = XCVersionGroup;
 			children = (
