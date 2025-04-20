@@ -1,0 +1,5 @@
+# macOSの不要ファイル
+.DS_Store
+
+# Xcodeのユーザー固有のUI状態
+**/xcuserdata/**/UserInterfaceState.xcuserstate
