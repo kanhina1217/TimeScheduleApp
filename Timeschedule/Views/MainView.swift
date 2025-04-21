@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreData
+import WidgetKit
 
 struct MainView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -146,6 +147,26 @@ struct MainView: View {
                         selectedPattern = patterns.first
                     }
                 }
+                
+                // ウィジェットデータを更新
+                updateWidgetData()
+            }
+            .onChange(of: patterns) { _, _ in
+                // パターンが変更されたら、ウィジェットデータも更新
+                updateWidgetData()
+            }
+            .onChange(of: timetables) { _, _ in
+                // 時間割データが変更されたら、ウィジェットデータも更新
+                updateWidgetData()
+            }
+            .onChange(of: selectedPattern) { _, _ in
+                // 選択中のパターンが変わったら、ウィジェットデータも更新
+                updateWidgetData()
+                
+                // パターンが変更されたら、UserDefaultsに保存する
+                if let pattern = selectedPattern {
+                    UserDefaults.standard.set(pattern.id?.uuidString ?? "default", forKey: "currentPatternID")
+                }
             }
             // 時間割詳細/編集画面（既存データまたは空きコマクリック時）
             .sheet(isPresented: $showingDetailSheet) {
@@ -234,6 +255,11 @@ struct MainView: View {
         default:
             return Color(.systemGray6)
         }
+    }
+    
+    // ウィジェットデータを更新する
+    private func updateWidgetData() {
+        WidgetDataManager.shared.exportDataForWidget(context: viewContext)
     }
 }
 
