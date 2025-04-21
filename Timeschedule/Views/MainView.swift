@@ -2,10 +2,112 @@ import SwiftUI
 import CoreData
 import WidgetKit
 
+// 時間割のセル表示用コンポーネント
+struct TimetableCellView: View {
+    let timetable: Timetable?
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack {
+                if let timetable = timetable, let subjectName = timetable.subjectName, !subjectName.isEmpty {
+                    // 時間割データがある場合
+                    Text(subjectName)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text(timetable.classroom ?? "")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    // 空きコマの場合
+                    Text("")
+                        .font(.caption)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 60)
+            .background(getCellColor(for: timetable))
+            .cornerRadius(8)
+        }
+    }
+    
+    // セルの背景色を取得
+    private func getCellColor(for timetable: Timetable?) -> Color {
+        guard let timetable = timetable, let colorName = timetable.color, let subjectName = timetable.subjectName, !subjectName.isEmpty else {
+            return Color(.systemGray6)  // データがない場合のデフォルト色
+        }
+        
+        // 色名に基づいて色を返す
+        switch colorName {
+        case "red": return Color.red.opacity(0.3)
+        case "blue": return Color.blue.opacity(0.3)
+        case "green": return Color.green.opacity(0.3)
+        case "yellow": return Color.yellow.opacity(0.3)
+        case "purple": return Color.purple.opacity(0.3)
+        default: return Color(.systemGray6)
+        }
+    }
+}
+
+// 時間情報表示コンポーネント
+struct PeriodInfoView: View {
+    let period: Int
+    let pattern: Pattern?
+    
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("\(period)")
+                .font(.headline)
+                .frame(width: 50)
+            
+            if let pattern = pattern {
+                let startTime = pattern.startTimeForPeriod(period)
+                Text(startTime)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                let endTime = pattern.endTimeForPeriod(period)
+                Text(endTime)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(width: 50)
+    }
+}
+
+// パターン選択コンポーネント
+struct PatternPickerView: View {
+    @Binding var selectedPattern: Pattern?
+    let patterns: FetchedResults<Pattern>
+    
+    var body: some View {
+        Group {
+            if patterns.isEmpty {
+                EmptyView()
+            } else {
+                // 明示的な型で中間データを作成
+                let items: [(id: UUID, pattern: Pattern, name: String)] = patterns.map { pattern in
+                    (id: pattern.id ?? UUID(), pattern: pattern, name: pattern.name ?? "不明")
+                }
+                
+                Picker("パターン", selection: $selectedPattern) {
+                    ForEach(items, id: \.id) { item in
+                        Text(item.name).tag(item.pattern as Pattern?)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding()
+            }
+        }
+    }
+}
+
+// メインビュー
 struct MainView: View {
     @Environment(\.managedObjectContext) private var viewContext
     
-    // パターンのFetchRequest - 明示的に型を指定
+    // パターンのFetchRequest
     @FetchRequest(
         entity: Pattern.entity(),
         sortDescriptors: [
@@ -15,7 +117,7 @@ struct MainView: View {
         animation: .default)
     private var patterns: FetchedResults<Pattern>
     
-    // 時間割データのFetchRequest - 明示的に型を指定
+    // 時間割データのFetchRequest
     @FetchRequest(
         entity: Timetable.entity(),
         sortDescriptors: [
@@ -40,18 +142,10 @@ struct MainView: View {
     var body: some View {
         NavigationView {
             VStack {
-                // 時程パターン選択
-                if !patterns.isEmpty {
-                    Picker("パターン", selection: $selectedPattern) {
-                        ForEach(patterns, id: \.self) { pattern in
-                            Text(pattern.name ?? "不明").tag(pattern as Pattern?)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .padding()
-                }
+                // パターン選択コンポーネント
+                PatternPickerView(selectedPattern: $selectedPattern, patterns: patterns)
                 
-                // タブ切り替えボタン（時間割と課題管理）
+                // タブ切り替えボタン
                 HStack {
                     NavigationLink(destination: TaskManagementView()) {
                         HStack {
@@ -63,61 +157,12 @@ struct MainView: View {
                         .background(Color.blue.opacity(0.1))
                         .cornerRadius(8)
                     }
-                    
                     Spacer()
                 }
                 .padding(.horizontal)
                 
                 // 時間割表示
-                ScrollView {
-                    VStack(spacing: 10) {
-                        // 曜日ヘッダー行
-                        HStack {
-                            Text("") // 左上の空白セル
-                                .frame(width: 50)
-                            
-                            ForEach(daysOfWeek.prefix(5), id: \.self) { day in
-                                Text(day)
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity)
-                            }
-                        }
-                        .padding(.horizontal)
-                        
-                        // 時限行
-                        ForEach(1...(selectedPattern?.periodCount ?? periodCount), id: \.self) { period in
-                            VStack(spacing: 2) {
-                                HStack {
-                                    // 時限番号と時間情報
-                                    VStack(spacing: 2) {
-                                        Text("\(period)")
-                                            .font(.headline)
-                                            .frame(width: 50)
-                                        
-                                        // 現在のパターンの時間情報
-                                        if let pattern = selectedPattern {
-                                            Text(pattern.startTimeForPeriod(period))
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                            
-                                            Text(pattern.endTimeForPeriod(period))
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                    .frame(width: 50)
-                                    
-                                    // 曜日ごとのセル
-                                    ForEach(0..<5) { day in
-                                        timetableCell(day: day, period: Int16(period))
-                                    }
-                                }
-                                .padding(.horizontal)
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
-                }
+                timetableGridView
                 
                 Spacer()
             }
@@ -131,44 +176,20 @@ struct MainView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        // プラスボタンからの登録はコマ選択モードで起動
                         showingAddSheet = true
                     }) {
                         Image(systemName: "plus")
                     }
                 }
             }
-            .onAppear {
-                // デフォルトパターンの選択
-                if selectedPattern == nil {
-                    if let defaultPattern = patterns.first(where: { $0.isDefault }) {
-                        selectedPattern = defaultPattern
-                    } else {
-                        selectedPattern = patterns.first
-                    }
-                }
-                
-                // ウィジェットデータを更新
-                updateWidgetData()
-            }
-            .onChange(of: patterns) { _, _ in
-                // パターンが変更されたら、ウィジェットデータも更新
-                updateWidgetData()
-            }
-            .onChange(of: timetables) { _, _ in
-                // 時間割データが変更されたら、ウィジェットデータも更新
-                updateWidgetData()
-            }
+            .onAppear { loadDefaultPattern() }
+            // FetchedResultsはEquatableに準拠していないため、.onChangeは使用できない
+            // 代わりにonReceiveメソッドを使用するか、FetchRequestの.onChangeを使用する
             .onChange(of: selectedPattern) { _, _ in
-                // 選択中のパターンが変わったら、ウィジェットデータも更新
                 updateWidgetData()
-                
-                // パターンが変更されたら、UserDefaultsに保存する
-                if let pattern = selectedPattern {
-                    UserDefaults.standard.set(pattern.id?.uuidString ?? "default", forKey: "currentPatternID")
-                }
+                saveSelectedPatternID()
             }
-            // 時間割詳細/編集画面（既存データまたは空きコマクリック時）
+            // onAppearで一度だけデータを更新し、個別のビューの更新に任せる
             .sheet(isPresented: $showingDetailSheet) {
                 if let pattern = selectedPattern {
                     TimetableDetailView(
@@ -180,7 +201,6 @@ struct MainView: View {
                     .environment(\.managedObjectContext, viewContext)
                 }
             }
-            // コマ選択から追加する画面（プラスボタンからの追加時）
             .sheet(isPresented: $showingAddSheet) {
                 if let pattern = selectedPattern {
                     TimetableDetailView(pattern: pattern)
@@ -190,74 +210,84 @@ struct MainView: View {
         }
     }
     
-    // 時間割のセルを生成（パターンに関係なく同じ時間割を表示）
-    private func timetableCell(day: Int, period: Int16) -> some View {
-        // この曜日・時限の時間割データを取得
-        let timetable = fetchTimetable(for: day, period: period)
-        
-        return Button(action: {
-            // セルタップ時の処理
-            selectedDay = day
-            selectedPeriod = Int(period)
-            selectedTimetable = timetable
-            showingDetailSheet = true
-        }) {
-            VStack {
-                if let timetable = timetable, let subjectName = timetable.subjectName, !subjectName.isEmpty {
-                    // 時間割データがある場合
-                    Text(subjectName)
-                        .font(.headline)
-                        .foregroundColor(.primary)
+    // 時間割グリッドの表示
+    private var timetableGridView: some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                // 曜日ヘッダー行
+                HStack {
+                    Text("") // 左上の空白セル
+                        .frame(width: 50)
                     
-                    Text(timetable.classroom ?? "")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                } else {
-                    // 空きコマの場合
-                    Text("")
-                        .font(.caption)
+                    let weekDays = Array(daysOfWeek.prefix(5))
+                    ForEach(0..<weekDays.count, id: \.self) { index in
+                        Text(weekDays[index])
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal)
+                
+                // 時限行
+                let maxPeriods = selectedPattern?.periodCount ?? periodCount
+                ForEach(1...maxPeriods, id: \.self) { periodNum in
+                    periodRowView(period: periodNum)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 60)
-            .background(getCellColor(for: timetable))
-            .cornerRadius(8)
         }
     }
     
-    // 時間割データを取得（パターンに関係なく取得）
+    // 時限ごとの行表示
+    private func periodRowView(period: Int) -> some View {
+        VStack(spacing: 2) {
+            HStack {
+                // 時限情報
+                PeriodInfoView(period: period, pattern: selectedPattern)
+                
+                // 曜日ごとのセル
+                ForEach(0..<5, id: \.self) { dayIndex in
+                    let timetable = fetchTimetable(for: dayIndex, period: Int16(period))
+                    TimetableCellView(timetable: timetable) {
+                        selectedDay = dayIndex
+                        selectedPeriod = period
+                        selectedTimetable = timetable
+                        showingDetailSheet = true
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+        .padding(.vertical, 4)
+    }
+    
+    // デフォルトパターンの読み込み
+    private func loadDefaultPattern() {
+        if selectedPattern == nil {
+            if let defaultPattern = patterns.first(where: { $0.isDefault }) {
+                selectedPattern = defaultPattern
+            } else {
+                selectedPattern = patterns.first
+            }
+        }
+        updateWidgetData()
+    }
+    
+    // 選択中のパターンをUserDefaultsに保存
+    private func saveSelectedPatternID() {
+        if let pattern = selectedPattern {
+            UserDefaults.standard.set(pattern.id?.uuidString ?? "default", forKey: "currentPatternID")
+        }
+    }
+    
+    // 時間割データを取得
     private func fetchTimetable(for day: Int, period: Int16) -> Timetable? {
-        // パターンに関係なく、曜日と時限だけで時間割を検索
         let filtered = timetables.filter { timetable in
             return timetable.dayOfWeek == day && timetable.period == period
         }
-        
         return filtered.first
     }
     
-    // セルの背景色を取得
-    private func getCellColor(for timetable: Timetable?) -> Color {
-        guard let timetable = timetable, let colorName = timetable.color, let subjectName = timetable.subjectName, !subjectName.isEmpty else {
-            return Color(.systemGray6)  // データがない場合のデフォルト色
-        }
-        
-        // 色名に基づいて色を返す
-        switch colorName {
-        case "red":
-            return Color.red.opacity(0.3)
-        case "blue":
-            return Color.blue.opacity(0.3)
-        case "green":
-            return Color.green.opacity(0.3)
-        case "yellow":
-            return Color.yellow.opacity(0.3)
-        case "purple":
-            return Color.purple.opacity(0.3)
-        default:
-            return Color(.systemGray6)
-        }
-    }
-    
-    // ウィジェットデータを更新する
+    // ウィジェットデータを更新
     private func updateWidgetData() {
         WidgetDataManager.shared.exportDataForWidget(context: viewContext)
     }

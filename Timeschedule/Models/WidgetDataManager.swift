@@ -67,29 +67,35 @@ class WidgetDataManager {
             if let timetables = try context.fetch(fetchRequest) as? [NSManagedObject] {
                 for timetable in timetables {
                     // 必要なデータを抽出
-                    if let weekday = timetable.value(forKey: "weekday") as? Int,
-                       let period = timetable.value(forKey: "period") as? String,
-                       let subjectName = timetable.value(forKey: "subjectName") as? String,
-                       let patternID = timetable.value(forKey: "patternID") as? String {
+                    if let dayOfWeek = timetable.value(forKey: "dayOfWeek") as? Int16,
+                       let period = timetable.value(forKey: "period") as? Int16,
+                       let subjectName = timetable.value(forKey: "subjectName") as? String {
                         
                         // 各項目を辞書に格納
                         var itemDict: [String: Any] = [
-                            "weekday": weekday,
-                            "period": period,
+                            "dayOfWeek": Int(dayOfWeek),
+                            "period": String(period),  // 文字列として保存
                             "subjectName": subjectName,
-                            "patternID": patternID,
                         ]
                         
+                        // パターンIDを取得（リレーションシップから）
+                        if let patternRelation = timetable.value(forKey: "pattern") as? NSManagedObject,
+                           let patternID = patternRelation.value(forKey: "id") as? UUID {
+                            itemDict["patternID"] = patternID.uuidString
+                        } else {
+                            itemDict["patternID"] = "default"
+                        }
+                        
                         // 任意の項目は存在する場合のみ追加
-                        if let roomName = timetable.value(forKey: "roomName") as? String {
-                            itemDict["roomName"] = roomName
+                        if let classroom = timetable.value(forKey: "classroom") as? String {
+                            itemDict["roomName"] = classroom
                         } else {
                             itemDict["roomName"] = ""
                         }
                         
                         // その他のフィールドも必要に応じて追加
-                        itemDict["startTime"] = getStartTimeForPeriod(period)
-                        itemDict["endTime"] = getEndTimeForPeriod(period)
+                        itemDict["startTime"] = getStartTimeForPeriod(String(period))
+                        itemDict["endTime"] = getEndTimeForPeriod(String(period))
                         
                         result.append(itemDict)
                     }

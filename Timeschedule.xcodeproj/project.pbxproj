@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5F68697B2DB632A500C61387 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5F68697A2DB632A500C61387 /* WidgetKit.framework */; };
+		5F68697D2DB632A500C61387 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5F68697C2DB632A500C61387 /* SwiftUI.framework */; };
+		5F68698E2DB632A700C61387 /* TimetableWidigetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5F6869782DB632A500C61387 /* TimetableWidigetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		5F78904F2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 5F78904D2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld */; };
 /* End PBXBuildFile section */
 
@@ -25,14 +28,49 @@
 			remoteGlobalIDString = 5F5C00712DB129E200B36824;
 			remoteInfo = Timeschedule;
 		};
+		5F68698C2DB632A700C61387 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5F5C006A2DB129E200B36824 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5F6869772DB632A500C61387;
+			remoteInfo = TimetableWidigetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5F6869932DB632A700C61387 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5F68698E2DB632A700C61387 /* TimetableWidigetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		5F5C00722DB129E200B36824 /* Timeschedule.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Timeschedule.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F5C007F2DB129E400B36824 /* TimescheduleTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TimescheduleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F5C00892DB129E400B36824 /* TimescheduleUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TimescheduleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F6869782DB632A500C61387 /* TimetableWidigetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TimetableWidigetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F68697A2DB632A500C61387 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		5F68697C2DB632A500C61387 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		5F6869942DB632AF00C61387 /* TimetableWidigetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TimetableWidigetExtension.entitlements; sourceTree = "<group>"; };
 		5F78904E2DB13B48003A50B1 /* TimeScheduleData.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = TimeScheduleData.xcdatamodel; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5F68698F2DB632A700C61387 /* Exceptions for "TimetableWidiget" folder in "TimetableWidigetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 5F6869772DB632A500C61387 /* TimetableWidigetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5F5C00742DB129E200B36824 /* Timeschedule */ = {
@@ -48,6 +86,14 @@
 		5F5C008C2DB129E400B36824 /* TimescheduleUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = TimescheduleUITests;
+			sourceTree = "<group>";
+		};
+		5F68697E2DB632A500C61387 /* TimetableWidiget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5F68698F2DB632A700C61387 /* Exceptions for "TimetableWidiget" folder in "TimetableWidigetExtension" target */,
+			);
+			path = TimetableWidiget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -74,15 +120,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5F6869752DB632A500C61387 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5F68697D2DB632A500C61387 /* SwiftUI.framework in Frameworks */,
+				5F68697B2DB632A500C61387 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		5F5C00692DB129E200B36824 = {
 			isa = PBXGroup;
 			children = (
+				5F6869942DB632AF00C61387 /* TimetableWidigetExtension.entitlements */,
 				5F5C00742DB129E200B36824 /* Timeschedule */,
 				5F5C00822DB129E400B36824 /* TimescheduleTests */,
 				5F5C008C2DB129E400B36824 /* TimescheduleUITests */,
+				5F68697E2DB632A500C61387 /* TimetableWidiget */,
+				5F6869792DB632A500C61387 /* Frameworks */,
 				5F5C00732DB129E200B36824 /* Products */,
 				5F78904D2DB13B48003A50B1 /* TimeScheduleData.xcdatamodeld */,
 			);
@@ -94,8 +152,18 @@
 				5F5C00722DB129E200B36824 /* Timeschedule.app */,
 				5F5C007F2DB129E400B36824 /* TimescheduleTests.xctest */,
 				5F5C00892DB129E400B36824 /* TimescheduleUITests.xctest */,
+				5F6869782DB632A500C61387 /* TimetableWidigetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		5F6869792DB632A500C61387 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				5F68697A2DB632A500C61387 /* WidgetKit.framework */,
+				5F68697C2DB632A500C61387 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -108,10 +176,12 @@
 				5F5C006E2DB129E200B36824 /* Sources */,
 				5F5C006F2DB129E200B36824 /* Frameworks */,
 				5F5C00702DB129E200B36824 /* Resources */,
+				5F6869932DB632A700C61387 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				5F68698D2DB632A700C61387 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				5F5C00742DB129E200B36824 /* Timeschedule */,
@@ -169,6 +239,28 @@
 			productReference = 5F5C00892DB129E400B36824 /* TimescheduleUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		5F6869772DB632A500C61387 /* TimetableWidigetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5F6869902DB632A700C61387 /* Build configuration list for PBXNativeTarget "TimetableWidigetExtension" */;
+			buildPhases = (
+				5F6869742DB632A500C61387 /* Sources */,
+				5F6869752DB632A500C61387 /* Frameworks */,
+				5F6869762DB632A500C61387 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				5F68697E2DB632A500C61387 /* TimetableWidiget */,
+			);
+			name = TimetableWidigetExtension;
+			packageProductDependencies = (
+			);
+			productName = TimetableWidigetExtension;
+			productReference = 5F6869782DB632A500C61387 /* TimetableWidigetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -190,6 +282,9 @@
 						CreatedOnToolsVersion = 16.3;
 						TestTargetID = 5F5C00712DB129E200B36824;
 					};
+					5F6869772DB632A500C61387 = {
+						CreatedOnToolsVersion = 16.3;
+					};
 				};
 			};
 			buildConfigurationList = 5F5C006D2DB129E200B36824 /* Build configuration list for PBXProject "Timeschedule" */;
@@ -209,6 +304,7 @@
 				5F5C00712DB129E200B36824 /* Timeschedule */,
 				5F5C007E2DB129E400B36824 /* TimescheduleTests */,
 				5F5C00882DB129E400B36824 /* TimescheduleUITests */,
+				5F6869772DB632A500C61387 /* TimetableWidigetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -229,6 +325,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		5F5C00872DB129E400B36824 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5F6869762DB632A500C61387 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -260,6 +363,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5F6869742DB632A500C61387 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -272,6 +382,11 @@
 			isa = PBXTargetDependency;
 			target = 5F5C00712DB129E200B36824 /* Timeschedule */;
 			targetProxy = 5F5C008A2DB129E400B36824 /* PBXContainerItemProxy */;
+		};
+		5F68698D2DB632A700C61387 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5F6869772DB632A500C61387 /* TimetableWidigetExtension */;
+			targetProxy = 5F68698C2DB632A700C61387 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -400,6 +515,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Timeschedule/Timeschedule.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 724B95MF6D;
@@ -428,6 +544,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Timeschedule/Timeschedule.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 724B95MF6D;
@@ -523,6 +640,62 @@
 			};
 			name = Release;
 		};
+		5F6869912DB632A700C61387 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = TimetableWidigetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 724B95MF6D;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TimetableWidiget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TimetableWidiget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kanhina.Timeschedule.TimetableWidiget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		5F6869922DB632A700C61387 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = TimetableWidigetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 724B95MF6D;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TimetableWidiget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TimetableWidiget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kanhina.Timeschedule.TimetableWidiget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -558,6 +731,15 @@
 			buildConfigurations = (
 				5F5C009A2DB129E400B36824 /* Debug */,
 				5F5C009B2DB129E400B36824 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5F6869902DB632A700C61387 /* Build configuration list for PBXNativeTarget "TimetableWidigetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5F6869912DB632A700C61387 /* Debug */,
+				5F6869922DB632A700C61387 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
