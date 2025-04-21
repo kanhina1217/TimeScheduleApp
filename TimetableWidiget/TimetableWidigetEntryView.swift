@@ -6,6 +6,13 @@ struct TimetableWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
     @Environment(\.colorScheme) var colorScheme
     
+    // デバッグモードのフラグ（実機でデバッグ情報を表示するかどうか）
+    #if DEBUG
+    private let showDebugInfo = true
+    #else
+    private let showDebugInfo = false
+    #endif
+    
     // 曜日表示のための配列
     private let weekdayNames = ["日", "月", "火", "水", "木", "金", "土"]
     
@@ -51,6 +58,13 @@ struct TimetableWidgetEntryView: View {
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "M/d"
+        return formatter.string(from: date)
+    }
+    
+    // デバッグ用の日付フォーマット
+    private func formatDebugDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd HH:mm:ss"
         return formatter.string(from: date)
     }
     
@@ -168,9 +182,15 @@ struct TimetableWidgetEntryView: View {
                             .font(.system(size: 20, weight: .bold))
                             .foregroundColor(themeColor)
                         
-                        Text("時間割")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+                        if showDebugInfo {
+                            Text("(weekday: \(weekday), items: \(entry.timetableItems.count))")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("時間割")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
                     }
                     
                     Spacer()
@@ -209,6 +229,13 @@ struct TimetableWidgetEntryView: View {
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
+                        
+                        if showDebugInfo {
+                            Text("更新: \(formatDebugDate(entry.date))")
+                                .font(.system(size: 10))
+                                .foregroundColor(.gray)
+                                .padding(.top, 8)
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 20)
@@ -239,6 +266,15 @@ struct TimetableWidgetEntryView: View {
                                     Spacer()
                                 }
                                 .padding(.top, 4)
+                            }
+                            
+                            // デバッグ情報
+                            if showDebugInfo {
+                                Text("更新: \(formatDebugDate(entry.date))")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.gray)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.top, 8)
                             }
                         }
                         .padding(.vertical, 8)

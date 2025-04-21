@@ -4,8 +4,8 @@ import CoreData
 
 // ウィジェット用のデータ管理クラス
 class WidgetDataManager {
-    // アプリグループ識別子（実際のものに変更してください）
-    private let appGroupIdentifier = "group.com.yourapp.timetable"
+    // アプリグループ識別子を正しい値に修正
+    private let appGroupIdentifier = "group.com.kanhina.timetable"
     
     // 特定の曜日の時間割データを取得する
     func getTimetableForWeekday(_ weekday: Int) throws -> [TimeTableItem] {

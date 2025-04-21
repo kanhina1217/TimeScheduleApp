@@ -6,8 +6,8 @@ import WidgetKit
 class WidgetDataManager {
     static let shared = WidgetDataManager()
     
-    // アプリグループ識別子（本番環境では適切なものに変更してください）
-    private let appGroupIdentifier = "group.com.yourapp.timetable"
+    // アプリグループ識別子を正しい値に修正
+    private let appGroupIdentifier = "group.com.kanhina.timetable"
     
     private init() {}
     
@@ -148,22 +148,79 @@ class WidgetDataManager {
         print("===== ウィジェットデータの内容 =====")
         print("データ件数: \(savedData.count)")
         
+        // 曜日ごとのデータカウント
+        var dayCounts = [Int: Int]()
+        
         for (index, item) in savedData.enumerated() {
             print("項目 #\(index):")
             if let dayOfWeek = item["dayOfWeek"] as? Int {
-                let dayName = ["日", "月", "火", "水", "木", "金", "土"][dayOfWeek]
-                print("  曜日: \(dayName)(\(dayOfWeek))")
+                let dayNames = ["日", "月", "火", "水", "木", "金", "土"]
+                let dayName = dayOfWeek >= 0 && dayOfWeek < dayNames.count ? dayNames[dayOfWeek] : "不明"
+                print("  曜日: \(dayName)曜日 (インデックス: \(dayOfWeek))")
+                
+                // 曜日ごとのカウントを更新
+                dayCounts[dayOfWeek] = (dayCounts[dayOfWeek] ?? 0) + 1
+            } else {
+                print("  曜日: 未設定")
             }
+            
             if let period = item["period"] as? String {
                 print("  時限: \(period)限目")
             }
+            
             if let subject = item["subjectName"] as? String {
                 print("  科目: \(subject)")
             }
+            
+            if let room = item["roomName"] as? String, !room.isEmpty {
+                print("  教室: \(room)")
+            }
+            
             if let timeSlot = item["timeSlot"] as? String {
                 print("  時間: \(timeSlot)")
+            } else if let startTime = item["startTime"] as? String, let endTime = item["endTime"] as? String {
+                print("  時間: \(startTime)-\(endTime)")
             }
+            
             print("---")
         }
+        
+        // 曜日ごとの統計情報
+        print("\n===== 曜日別データ件数 =====")
+        let dayNames = ["日", "月", "火", "水", "木", "金", "土"]
+        for day in 0..<7 {
+            let count = dayCounts[day] ?? 0
+            print("\(dayNames[day])曜日: \(count)件")
+        }
+        
+        // 現在の曜日情報
+        let calendar = Calendar.current
+        let today = calendar.component(.weekday, from: Date())
+        let japaneseWeekday = today - 1 // 0=日曜日、1=月曜日...
+        print("\n現在の曜日: \(dayNames[japaneseWeekday])曜日 (インデックス: \(japaneseWeekday))")
+        print("今日の時間割データ: \(dayCounts[japaneseWeekday] ?? 0)件")
+    }
+    
+    /// デバッグ用：曜日の変換テスト
+    func testWeekdayConversion() {
+        print("\n===== 曜日変換テスト =====")
+        let dayNames = ["日", "月", "火", "水", "木", "金", "土"]
+        
+        // Calendarコンポーネントの曜日とインデックスの対応を確認
+        print("Calendar.current.weekday の対応:")
+        for i in 1...7 {
+            print("Calendar weekday \(i) → インデックス \(i-1) → \(dayNames[i-1])曜日")
+        }
+        
+        // 現在の曜日
+        let calendar = Calendar.current
+        let now = Date()
+        let currentWeekday = calendar.component(.weekday, from: now)
+        let japaneseWeekday = currentWeekday - 1
+        
+        print("\n現在時刻: \(now)")
+        print("Calendar.weekday: \(currentWeekday)")
+        print("日本式インデックス: \(japaneseWeekday)")
+        print("曜日名: \(dayNames[japaneseWeekday])曜日")
     }
 }
