@@ -47,28 +47,6 @@ struct TimetableWidgetEntryView: View {
         return colors[abs(hash) % colors.count]
     }
     
-    // 時間帯を整形して表示（シンプルバージョン）
-    private func formatTimeSlot(_ timeSlot: String?) -> String {
-        guard let timeSlot = timeSlot else { return "未定" }
-        
-        let components = timeSlot.split(separator: "-")
-        if components.count == 2 {
-            let start = components[0].trimmingCharacters(in: .whitespaces)
-            let end = components[1].trimmingCharacters(in: .whitespaces)
-            
-            // 時間のみを表示（短縮バージョン）
-            if let startColon = start.firstIndex(of: ":"),
-               let endColon = end.firstIndex(of: ":") {
-                let startHour = start[..<startColon]
-                let endHour = end[..<endColon]
-                return "\(startHour)〜\(endHour)"
-            }
-            
-            return "\(start)〜\(end)"
-        }
-        return timeSlot
-    }
-    
     // 日付をフォーマット
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
@@ -107,6 +85,14 @@ struct TimetableWidgetEntryView: View {
                    let endHour = Int(endComponents[0]),
                    let endMinute = Int(endComponents[1]) {
                     let endTime = endHour * 60 + endMinute
+                    
+                    // 今日がその曜日なら状態を判定、そうでなければupcoming
+                    let today = Calendar.current.component(.weekday, from: now)
+                    let entryDay = getWeekday(entry.date)
+                    
+                    if today != entryDay {
+                        return .upcoming // 今日の曜日でなければすべて予定として表示
+                    }
                     
                     if currentTime < startTime {
                         // 30分以内に始まる場合は「もうすぐ」
@@ -174,29 +160,16 @@ struct TimetableWidgetEntryView: View {
             Color(UIColor.systemBackground)
                 .edgesIgnoringSafeArea(.all)
             
-            // 曜日カラーの背景アクセント
-            VStack {
-                HStack {
-                    Rectangle()
-                        .fill(themeColor)
-                        .frame(width: 5)
-                        .edgesIgnoringSafeArea(.leading)
-                    Spacer()
-                }
-                .frame(height: 40)
-                Spacer()
-            }
-            
-            VStack(spacing: 4) {
+            VStack(spacing: 0) {
                 // ヘッダー
                 HStack {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("\(formatDate(entry.date)) (\(weekdayNames[weekday - 1]))")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.primary)
+                        Text("\(weekdayNames[weekday - 1])曜日")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(themeColor)
                         
                         Text("時間割")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
                     }
                     
@@ -215,8 +188,13 @@ struct TimetableWidgetEntryView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 12)
+                .padding(.top, 14)
                 .padding(.bottom, 8)
+                .background(
+                    Rectangle()
+                        .fill(themeColor.opacity(0.1))
+                        .edgesIgnoringSafeArea(.top)
+                )
                 
                 // 授業リスト
                 if entry.timetableItems.isEmpty {
@@ -227,7 +205,7 @@ struct TimetableWidgetEntryView: View {
                             .font(.system(size: 36))
                             .foregroundColor(themeColor.opacity(0.8))
                         
-                        Text("今日の授業はありません")
+                        Text("\(weekdayNames[weekday - 1])曜日の授業はありません")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -237,35 +215,34 @@ struct TimetableWidgetEntryView: View {
                     Spacer()
                 } else {
                     // 授業がある場合
-                    LazyVStack(spacing: family == .systemSmall ? 8 : 10) {
-                        ForEach(entry.timetableItems.prefix(family == .systemSmall ? 3 : 5), id: \.self) { item in
-                            let status = getClassStatus(item.startTime)
-                            
-                            ClassItemView(
-                                item: item,
-                                status: status,
-                                themeColor: colorForSubject(item.subject ?? ""),
-                                family: family
-                            )
-                            .padding(.horizontal, 16)
-                        }
-                        
-                        // 表示しきれない授業がある場合
-                        if (family == .systemSmall && entry.timetableItems.count > 3) ||
-                           (family != .systemSmall && entry.timetableItems.count > 5) {
-                            HStack {
-                                Spacer()
-                                Text("他 \(entry.timetableItems.count - (family == .systemSmall ? 3 : 5))コマ")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Spacer()
+                    ScrollView {
+                        LazyVStack(spacing: family == .systemSmall ? 6 : 8) {
+                            ForEach(entry.timetableItems.prefix(family == .systemSmall ? 3 : 6), id: \.self) { item in
+                                let status = getClassStatus(item.startTime)
+                                
+                                ClassItemView(
+                                    item: item,
+                                    status: status,
+                                    themeColor: colorForSubject(item.subject ?? ""),
+                                    family: family
+                                )
                             }
-                            .padding(.top, 4)
+                            
+                            // 表示しきれない授業がある場合
+                            if (family == .systemSmall && entry.timetableItems.count > 3) ||
+                               (family != .systemSmall && entry.timetableItems.count > 6) {
+                                HStack {
+                                    Spacer()
+                                    Text("他 \(entry.timetableItems.count - (family == .systemSmall ? 3 : 6))コマ")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                }
+                                .padding(.top, 4)
+                            }
                         }
+                        .padding(.vertical, 8)
                     }
-                    .padding(.bottom, 12)
-                    
-                    Spacer(minLength: 0)
                 }
             }
         }
@@ -293,39 +270,29 @@ struct ClassItemView: View {
     }
     
     var body: some View {
-        HStack(spacing: 12) {
-            // 時限と時間
-            VStack(alignment: .center, spacing: 2) {
-                Text(item.period ?? "")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(themeColor)
-                    )
-                    .shadow(color: themeColor.opacity(0.3), radius: 1, x: 0, y: 1)
-                
-                if family != .systemSmall {
-                    Text(formatTimeSlot(item.startTime))
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                }
-            }
-            .frame(width: family == .systemSmall ? 40 : 50)
+        HStack(spacing: 10) {
+            // 時限表示
+            Text(item.period ?? "")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(themeColor)
+                .frame(width: 35, alignment: .center)
+            
+            // 縦の区切り線
+            Rectangle()
+                .fill(themeColor.opacity(0.6))
+                .frame(width: 2, height: family == .systemSmall ? 30 : 36)
             
             // 科目情報
-            VStack(alignment: .leading, spacing: family == .systemSmall ? 0 : 2) {
-                HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: family == .systemSmall ? 1 : 3) {
+                HStack(alignment: .center, spacing: 6) {
                     Text(item.subject ?? "未定")
-                        .font(.system(size: family == .systemSmall ? 13 : 14, weight: .bold))
-                        .foregroundColor(status.textColor)
+                        .font(.system(size: family == .systemSmall ? 13 : 15, weight: .bold))
+                        .foregroundColor(.primary)
                         .lineLimit(1)
                     
                     if let badge = status.badge {
                         Text(badge)
-                            .font(.system(size: 8, weight: .black))
+                            .font(.system(size: 8, weight: .bold))
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
                             .background(
@@ -338,12 +305,16 @@ struct ClassItemView: View {
                     Spacer(minLength: 0)
                 }
                 
-                if family != .systemSmall {
-                    HStack(spacing: 8) {
+                HStack(spacing: 12) {
+                    Text(formatTimeSlot(item.startTime))
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                    
+                    if family != .systemSmall {
                         if let room = item.room, !room.isEmpty {
                             HStack(spacing: 3) {
                                 Image(systemName: "mappin")
-                                    .font(.system(size: 8))
+                                    .font(.system(size: 9))
                                 Text(room)
                                     .font(.system(size: 10))
                                     .lineLimit(1)
@@ -354,7 +325,7 @@ struct ClassItemView: View {
                         if let teacher = item.teacher, !teacher.isEmpty {
                             HStack(spacing: 3) {
                                 Image(systemName: "person")
-                                    .font(.system(size: 8))
+                                    .font(.system(size: 9))
                                 Text(teacher)
                                     .font(.system(size: 10))
                                     .lineLimit(1)
@@ -365,23 +336,18 @@ struct ClassItemView: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(UIColor.secondarySystemBackground))
-                .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(
-                    status == .inProgress ? themeColor : Color.clear,
-                    lineWidth: status == .inProgress ? 1.5 : 0
-                )
+                .stroke(status == .inProgress ? themeColor : Color.clear, lineWidth: 2)
         )
+        .padding(.horizontal, 12)
         .opacity(status.opacity)
-        .contentShape(Rectangle())
     }
 }
 
