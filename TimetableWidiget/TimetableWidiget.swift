@@ -4,14 +4,39 @@ import CoreData
 
 // ウィジェット用のデータ管理クラス
 class WidgetDataManager {
-    // アプリグループ識別子を正しい値に修正
+    // アプリグループ識別子
     private let appGroupIdentifier = "group.com.kanhina.timetable"
+    
+    // 共有UserDefaultsへのアクセスを強化
+    private func getSharedUserDefaults() -> UserDefaults? {
+        // 明示的にアプリグループIDを指定してUserDefaultsを取得
+        let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier)
+        
+        if sharedDefaults == nil {
+            print("警告: ウィジェット - 共有UserDefaultsの取得に失敗しました。アプリグループIDの設定を確認してください。")
+            print("アプリグループID: \(appGroupIdentifier)")
+        }
+        
+        return sharedDefaults
+    }
     
     // 特定の曜日の時間割データを取得する
     func getTimetableForWeekday(_ weekday: Int) throws -> [TimeTableItem] {
-        // UserDefaultsの共有インスタンスを取得
-        guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
+        print("ウィジェット - 曜日 \(weekday) の時間割を取得します")
+        
+        // 共有UserDefaultsを取得
+        guard let sharedDefaults = getSharedUserDefaults() else {
             print("共有UserDefaultsにアクセスできません")
+            return []
+        }
+        
+        // デバッグ情報: 使用可能なキーを表示
+        let allKeys = sharedDefaults.dictionaryRepresentation().keys
+        print("利用可能なキー: \(Array(allKeys))")
+        
+        // データがあるかどうかをまず確認
+        guard allKeys.contains("widgetTimetableData") else {
+            print("キー 'widgetTimetableData' が存在しません")
             return []
         }
         
@@ -21,13 +46,20 @@ class WidgetDataManager {
             return []
         }
         
+        print("読み込んだデータ件数: \(savedData.count)")
+        
         // 指定された曜日の時間割のみフィルタリング (0=日曜, 1=月曜, 2=火曜...)
         let filteredItems = savedData.filter { item in
             if let dayOfWeek = item["dayOfWeek"] as? Int {
-                return dayOfWeek == weekday
+                // 曜日が一致するデータのみを取得
+                let matches = dayOfWeek == weekday
+                print("曜日比較: データ上の曜日 \(dayOfWeek) vs 検索曜日 \(weekday) = \(matches ? "一致" : "不一致")")
+                return matches
             }
             return false
         }
+        
+        print("フィルタリング後のデータ件数: \(filteredItems.count)")
         
         // データをTimeTableItem形式に変換
         return filteredItems.compactMap { item in
@@ -87,6 +119,8 @@ struct TimetableWidgetProvider: TimelineProvider {
         refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
         #endif
         
+        print("ウィジェット更新予定: \(refreshDate)")
+        
         // タイムラインを作成して返す
         let timeline = Timeline(entries: [entries], policy: .after(refreshDate))
         completion(timeline)
@@ -104,6 +138,8 @@ struct TimetableWidgetProvider: TimelineProvider {
             
             // 日本の曜日表記に合わせて調整 (0 = 日曜日, 1 = 月曜日, ...)
             let japaneseWeekday = today - 1
+            
+            print("ウィジェット - 現在の曜日: \(today) → 日本式インデックス: \(japaneseWeekday)")
             
             // その曜日の時間割を取得
             let todayItems = try widgetDataManager.getTimetableForWeekday(japaneseWeekday)

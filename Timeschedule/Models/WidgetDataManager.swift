@@ -6,15 +6,28 @@ import WidgetKit
 class WidgetDataManager {
     static let shared = WidgetDataManager()
     
-    // アプリグループ識別子を正しい値に修正
+    // アプリグループ識別子
     private let appGroupIdentifier = "group.com.kanhina.timetable"
     
     private init() {}
     
+    // 共有UserDefaultsへのアクセスを強化
+    private func getSharedUserDefaults() -> UserDefaults? {
+        // 明示的にアプリグループIDを指定してUserDefaultsを取得
+        let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier)
+        
+        if sharedDefaults == nil {
+            print("警告: 共有UserDefaultsの取得に失敗しました。アプリグループIDの設定を確認してください。")
+            print("アプリグループID: \(appGroupIdentifier)")
+        }
+        
+        return sharedDefaults
+    }
+    
     /// ウィジェット用にデータをエクスポートする
     func exportDataForWidget(context: NSManagedObjectContext) {
         // UserDefaultsの共有インスタンスを取得
-        guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
+        guard let sharedDefaults = getSharedUserDefaults() else {
             print("共有UserDefaultsにアクセスできません")
             return
         }
@@ -28,10 +41,22 @@ class WidgetDataManager {
         let timetableData = fetchTimetableData(context: context)
         sharedDefaults.set(timetableData, forKey: "widgetTimetableData")
         
+        // 保存を確実に行う
+        if #available(iOS 13.0, *) {
+            // iOS 13以降ではsynchronizeは非推奨ですが、この場合は使用します
+            sharedDefaults.synchronize()
+        } else {
+            sharedDefaults.synchronize()
+        }
+        
         // ウィジェットの更新を通知
         WidgetCenter.shared.reloadAllTimelines()
         
         print("ウィジェットデータをエクスポートしました: \(timetableData.count)件")
+        
+        // デバッグ情報の表示
+        print("アプリグループID: \(appGroupIdentifier)")
+        print("データ保存状態: \(sharedDefaults.array(forKey: "widgetTimetableData") != nil ? "成功" : "失敗")")
     }
     
     /// 現在のパターンIDを取得
@@ -79,10 +104,9 @@ class WidgetDataManager {
                             itemDict["roomName"] = ""
                         }
                         
-                        // 教員情報があれば追加
-                        if let teacher = timetable.value(forKey: "teacher") as? String {
-                            itemDict["teacher"] = teacher
-                        }
+                        // 教員情報 - CoreDataモデルには存在しないため直接アクセスしない
+                        // 代わりに空文字列を設定
+                        itemDict["teacher"] = ""
                         
                         // 時間情報を追加
                         let startTime = getStartTimeForPeriod(String(period))
@@ -139,7 +163,7 @@ class WidgetDataManager {
     
     /// デバッグ用：現在のエクスポートされたデータを確認
     func printCurrentWidgetData() {
-        guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier),
+        guard let sharedDefaults = getSharedUserDefaults(),
               let savedData = sharedDefaults.array(forKey: "widgetTimetableData") as? [[String: Any]] else {
             print("ウィジェットデータがありません")
             return
