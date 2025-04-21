@@ -7,8 +7,8 @@ class WidgetDataManager {
     // アプリグループ識別子（実際のものに変更してください）
     private let appGroupIdentifier = "group.com.yourapp.timetable"
     
-    // 今日の時間割データを取得する
-    func getTodaysTimetable() throws -> [TimeTableItem] {
+    // 特定の曜日の時間割データを取得する
+    func getTimetableForWeekday(_ weekday: Int) throws -> [TimeTableItem] {
         // UserDefaultsの共有インスタンスを取得
         guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
             print("共有UserDefaultsにアクセスできません")
@@ -21,37 +21,39 @@ class WidgetDataManager {
             return []
         }
         
-        // 今日の曜日を取得 (0 = 日曜日, 1 = 月曜日, ...)
-        let calendar = Calendar.current
-        let today = calendar.component(.weekday, from: Date()) - 1
-        let adjustedWeekday = today == 0 ? 6 : today - 1 // 0=月曜、1=火曜...に変換
-        
-        // 今日の時間割だけをフィルタリング
-        let todaysItems = savedData.filter { item in
+        // 指定された曜日の時間割のみフィルタリング (0=日曜, 1=月曜, 2=火曜...)
+        let filteredItems = savedData.filter { item in
             if let dayOfWeek = item["dayOfWeek"] as? Int {
-                return dayOfWeek == adjustedWeekday
+                return dayOfWeek == weekday
             }
             return false
         }
         
         // データをTimeTableItem形式に変換
-        return todaysItems.compactMap { item in
+        return filteredItems.compactMap { item in
             guard let subjectName = item["subjectName"] as? String,
                   let period = item["period"] as? String else {
                 return nil
             }
             
+            // 授業の開始・終了時間を取得
+            let startTime = item["startTime"] as? String ?? ""
+            let endTime = item["endTime"] as? String ?? ""
+            
+            // 時間帯を「開始-終了」形式に
+            let timeSlot = startTime.isEmpty || endTime.isEmpty ? "" : "\(startTime)-\(endTime)"
+            
             return TimeTableItem(
                 subject: subjectName,
-                startTime: item["startTime"] as? String ?? "",
-                teacher: "", // 教員名はデータに含まれていない場合
+                startTime: timeSlot,
+                teacher: item["teacher"] as? String ?? "",
                 room: item["roomName"] as? String ?? "",
-                period: "\(period)限目"
+                period: "\(period)限"
             )
         }.sorted { (item1, item2) in
             // 時限順にソート
-            guard let period1 = Int(item1.period?.replacingOccurrences(of: "限目", with: "") ?? "0"),
-                  let period2 = Int(item2.period?.replacingOccurrences(of: "限目", with: "") ?? "0") else {
+            guard let period1 = Int(item1.period?.replacingOccurrences(of: "限", with: "") ?? "0"),
+                  let period2 = Int(item2.period?.replacingOccurrences(of: "限", with: "") ?? "0") else {
                 return false
             }
             return period1 < period2
@@ -75,7 +77,7 @@ struct TimetableWidgetProvider: TimelineProvider {
     // タイムラインエントリー（実際のウィジェット表示に使用される）
     func getTimeline(in context: Context, completion: @escaping (Timeline<TimetableWidgetEntry>) -> Void) {
         // データ取得処理
-        let entries = fetchTodaysSchedule()
+        let entries = fetchCurrentSchedule()
         
         // 更新のスケジューリング（日付が変わるときと数時間ごと）
         var refreshDate = calculateNextRefreshDate()
@@ -91,11 +93,20 @@ struct TimetableWidgetProvider: TimelineProvider {
     }
     
     // データ取得関数を分離して整理
-    private func fetchTodaysSchedule() -> TimetableWidgetEntry {
+    private func fetchCurrentSchedule() -> TimetableWidgetEntry {
         do {
             // WidgetDataManagerからデータを取得
             let widgetDataManager = WidgetDataManager()
-            let todayItems = try widgetDataManager.getTodaysTimetable()
+            
+            // 今日の曜日を取得 (1 = 日曜日, 2 = 月曜日, ...)
+            let calendar = Calendar.current
+            let today = calendar.component(.weekday, from: Date())
+            
+            // 日本の曜日表記に合わせて調整 (0 = 日曜日, 1 = 月曜日, ...)
+            let japaneseWeekday = today - 1
+            
+            // その曜日の時間割を取得
+            let todayItems = try widgetDataManager.getTimetableForWeekday(japaneseWeekday)
             return TimetableWidgetEntry(date: Date(), timetableItems: todayItems)
         } catch {
             print("ウィジェットデータの取得中にエラーが発生: \(error.localizedDescription)")
@@ -128,9 +139,9 @@ struct TimetableWidgetProvider: TimelineProvider {
     // プレビュー用のサンプルデータ
     private func sampleTimetableItems() -> [TimeTableItem] {
         return [
-            TimeTableItem(subject: "プログラミング概論", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限目"),
-            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限目"),
-            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限目")
+            TimeTableItem(subject: "プログラミング概論", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限"),
+            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限"),
+            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限")
         ]
     }
 }
@@ -169,8 +180,8 @@ struct TimetableWidget: Widget {
             TimetableWidgetEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("今日の時間割")
-        .description("今日の授業スケジュールを表示します")
+        .configurationDisplayName("時間割")
+        .description("授業スケジュールを表示します")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
@@ -179,8 +190,8 @@ struct TimetableWidget: Widget {
 struct TimetableWidget_Previews: PreviewProvider {
     static var previews: some View {
         let sampleItems = [
-            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限目"),
-            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限目")
+            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限"),
+            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限")
         ]
         
         let entry = TimetableWidgetEntry(date: Date(), timetableItems: sampleItems)

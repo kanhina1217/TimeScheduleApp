@@ -31,7 +31,7 @@ class WidgetDataManager {
         // ウィジェットの更新を通知
         WidgetCenter.shared.reloadAllTimelines()
         
-        print("ウィジェットデータをエクスポートしました")
+        print("ウィジェットデータをエクスポートしました: \(timetableData.count)件")
     }
     
     /// 現在のパターンIDを取得
@@ -41,20 +41,6 @@ class WidgetDataManager {
         
         // 例：UserDefaultsから取得する場合
         return UserDefaults.standard.string(forKey: "currentPatternID") ?? "default"
-        
-        // 例：CoreDataから取得する場合（必要に応じて実装）
-        // let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Pattern")
-        // fetchRequest.predicate = NSPredicate(format: "isActive == %@", NSNumber(value: true))
-        // do {
-        //     if let results = try context.fetch(fetchRequest) as? [NSManagedObject],
-        //        let activePattern = results.first,
-        //        let patternID = activePattern.value(forKey: "id") as? String {
-        //         return patternID
-        //     }
-        // } catch {
-        //     print("現在のパターンの取得に失敗: \(error)")
-        // }
-        // return "default" // デフォルト値
     }
     
     /// 時間割データを取得してエクスポート用に変換
@@ -73,7 +59,7 @@ class WidgetDataManager {
                         
                         // 各項目を辞書に格納
                         var itemDict: [String: Any] = [
-                            "dayOfWeek": Int(dayOfWeek),
+                            "dayOfWeek": Int(dayOfWeek),  // 0=日曜, 1=月曜, ...として保存
                             "period": String(period),  // 文字列として保存
                             "subjectName": subjectName,
                         ]
@@ -93,9 +79,19 @@ class WidgetDataManager {
                             itemDict["roomName"] = ""
                         }
                         
-                        // その他のフィールドも必要に応じて追加
-                        itemDict["startTime"] = getStartTimeForPeriod(String(period))
-                        itemDict["endTime"] = getEndTimeForPeriod(String(period))
+                        // 教員情報があれば追加
+                        if let teacher = timetable.value(forKey: "teacher") as? String {
+                            itemDict["teacher"] = teacher
+                        }
+                        
+                        // 時間情報を追加
+                        let startTime = getStartTimeForPeriod(String(period))
+                        let endTime = getEndTimeForPeriod(String(period))
+                        itemDict["startTime"] = startTime
+                        itemDict["endTime"] = endTime
+                        
+                        // ウィジェット表示用に一貫した時間形式も追加
+                        itemDict["timeSlot"] = "\(startTime)-\(endTime)"
                         
                         result.append(itemDict)
                     }
@@ -133,6 +129,41 @@ class WidgetDataManager {
         case "6": return "15:15"
         case "7": return "16:15"
         default: return ""
+        }
+    }
+    
+    /// 手動でウィジェットを更新する（アプリ内から呼び出し可能）
+    func refreshWidgets() {
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+    
+    /// デバッグ用：現在のエクスポートされたデータを確認
+    func printCurrentWidgetData() {
+        guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier),
+              let savedData = sharedDefaults.array(forKey: "widgetTimetableData") as? [[String: Any]] else {
+            print("ウィジェットデータがありません")
+            return
+        }
+        
+        print("===== ウィジェットデータの内容 =====")
+        print("データ件数: \(savedData.count)")
+        
+        for (index, item) in savedData.enumerated() {
+            print("項目 #\(index):")
+            if let dayOfWeek = item["dayOfWeek"] as? Int {
+                let dayName = ["日", "月", "火", "水", "木", "金", "土"][dayOfWeek]
+                print("  曜日: \(dayName)(\(dayOfWeek))")
+            }
+            if let period = item["period"] as? String {
+                print("  時限: \(period)限目")
+            }
+            if let subject = item["subjectName"] as? String {
+                print("  科目: \(subject)")
+            }
+            if let timeSlot = item["timeSlot"] as? String {
+                print("  時間: \(timeSlot)")
+            }
+            print("---")
         }
     }
 }
