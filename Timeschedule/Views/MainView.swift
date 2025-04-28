@@ -136,7 +136,7 @@ struct MainView: View {
     @State private var selectedTimetable: Timetable?
     
     // 曜日と時限
-    private let daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"]
+    private let daysOfWeek = ["日", "月", "火", "水", "木", "金", "土"]
     private let periodCount = 6
     
     var body: some View {

@@ -45,7 +45,7 @@ struct TimetableDetailView: View {
     @State private var periodSelections: [Bool] = Array(repeating: false, count: 10) // 時限選択状態（最大10）
     
     // 曜日と時限
-    private let daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"]
+    private let daysOfWeek = ["日", "月", "火", "水", "木", "金", "土"]
     
     // 利用可能な色の配列
     private let availableColors = ["red", "blue", "green", "yellow", "purple", "gray"]

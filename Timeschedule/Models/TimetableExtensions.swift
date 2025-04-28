@@ -15,7 +15,7 @@ import CoreData
 extension Timetable {
     // 曜日を文字列で取得
     var dayOfWeekString: String {
-        let days = ["月", "火", "水", "木", "金", "土", "日"]
+        let days = ["日", "月", "火", "水", "木", "金", "土"]
         let index = min(max(Int(dayOfWeek), 0), days.count - 1)
         return days[index]
     }
