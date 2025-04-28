@@ -19,9 +19,34 @@ struct TimetableWidgetEntryView: View {
     private func colorForSubject(_ subject: String, colorHex: String? = nil) -> Color {
         // 色情報が存在する場合はそれを使用
         if let colorHex = colorHex, !colorHex.isEmpty {
-            return Color(hex: colorHex) ?? .blue
+            // デバッグ出力
+            print("色情報を適用: \(subject) → \(colorHex)")
+            
+            // 色変換が失敗した場合のフォールバック処理を強化
+            if let color = Color(hex: colorHex) {
+                print("成功: \(subject)の色を設定 → \(colorHex)")
+                return color
+            } else {
+                print("警告: \(subject)のカラーコード変換に失敗 \(colorHex)")
+                
+                // 基本色のマッピングを試みる（色名が入っている可能性もある）
+                let colorMap: [String: Color] = [
+                    "red": .red, "blue": .blue, "green": .green,
+                    "yellow": .yellow, "orange": .orange, "purple": .purple,
+                    "pink": .pink, "gray": .gray, "black": .black
+                ]
+                
+                let lowerColorHex = colorHex.lowercased()
+                for (name, color) in colorMap {
+                    if lowerColorHex.contains(name) {
+                        print("色名マッピングで成功: \(subject) → \(name)")
+                        return color
+                    }
+                }
+            }
         }
         
+        print("科目 \(subject) に有効な色情報なし、デフォルト青を使用")
         // 色情報がない場合はデフォルトの青色を返す
         return .blue
     }
@@ -171,9 +196,41 @@ extension Color {
         var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
         
+        // デバッグ出力
+        print("Hexカラー変換: \(hexSanitized)")
+        
+        // 3桁カラーコード (#RGB) を6桁に展開
+        if hexSanitized.count == 3 {
+            var expandedHex = ""
+            for char in hexSanitized {
+                expandedHex.append(String(repeating: char, count: 2))
+            }
+            hexSanitized = expandedHex
+            print("3桁カラーコードを展開: \(hexSanitized)")
+        }
+        
+        // 4桁カラーコード (#RGBA) を8桁に展開
+        if hexSanitized.count == 4 {
+            var expandedHex = ""
+            for char in hexSanitized {
+                expandedHex.append(String(repeating: char, count: 2))
+            }
+            hexSanitized = expandedHex
+            print("4桁カラーコードを展開: \(hexSanitized)")
+        }
+        
         var rgb: UInt64 = 0
         
+        // 16進数文字列を検証（有効な16進数文字のみを許可）
+        let validHexChars = CharacterSet(charactersIn: "0123456789ABCDEFabcdef")
+        let hexChars = CharacterSet(charactersIn: hexSanitized)
+        guard validHexChars.isSuperset(of: hexChars) else {
+            print("無効なHex文字を検出: \(hexSanitized)")
+            return nil
+        }
+        
         guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else {
+            print("Hexカラー解析失敗: \(hexSanitized)")
             return nil
         }
         
@@ -183,22 +240,29 @@ extension Color {
             let green = Double((rgb & 0x00FF00) >> 8) / 255.0
             let blue = Double(rgb & 0x0000FF) / 255.0
             
+            print("RGB値: R:\(red) G:\(green) B:\(blue)")
             self.init(red: red, green: green, blue: blue)
             return
         }
         
         // 8桁カラーコード (#RRGGBBAA)
         if hexSanitized.count == 8 {
+            // 修正：適切なビットマスクとシフト処理
             let red = Double((rgb & 0xFF000000) >> 24) / 255.0
             let green = Double((rgb & 0x00FF0000) >> 16) / 255.0
             let blue = Double((rgb & 0x0000FF00) >> 8) / 255.0
             let alpha = Double(rgb & 0x000000FF) / 255.0
             
+            print("RGBA値: R:\(red) G:\(green) B:\(blue) A:\(alpha)")
             self.init(red: red, green: green, blue: blue, opacity: alpha)
             return
         }
         
-        return nil
+        // その他の長さのHexコードの場合はエラーハンドリング
+        print("対応していないHex形式: \(hexSanitized)")
+        
+        // フォールバック：基本的な安全なカラーとして青を返す
+        self.init(.blue)
     }
 }
 
