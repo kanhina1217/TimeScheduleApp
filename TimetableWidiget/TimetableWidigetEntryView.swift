@@ -219,50 +219,30 @@ extension Color {
             print("4桁カラーコードを展開: \(hexSanitized)")
         }
         
-        var rgb: UInt64 = 0
-        
-        // 16進数文字列を検証（有効な16進数文字のみを許可）
-        let validHexChars = CharacterSet(charactersIn: "0123456789ABCDEFabcdef")
-        let hexChars = CharacterSet(charactersIn: hexSanitized)
-        guard validHexChars.isSuperset(of: hexChars) else {
-            print("無効なHex文字を検出: \(hexSanitized)")
+        // 6桁または8桁のHexコードのみを許容
+        guard hexSanitized.count == 6 || hexSanitized.count == 8,
+              let hexValue = UInt64(hexSanitized, radix: 16) else {
+            print("無効なHexカラーフォーマット: \(hex)")
             return nil
         }
         
-        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else {
-            print("Hexカラー解析失敗: \(hexSanitized)")
-            return nil
-        }
+        let red, green, blue, alpha: CGFloat
         
-        // 6桁カラーコード (#RRGGBB)
         if hexSanitized.count == 6 {
-            let red = Double((rgb & 0xFF0000) >> 16) / 255.0
-            let green = Double((rgb & 0x00FF00) >> 8) / 255.0
-            let blue = Double(rgb & 0x0000FF) / 255.0
-            
-            print("RGB値: R:\(red) G:\(green) B:\(blue)")
-            self.init(red: red, green: green, blue: blue)
-            return
+            red = CGFloat((hexValue & 0xFF0000) >> 16) / 255.0
+            green = CGFloat((hexValue & 0x00FF00) >> 8) / 255.0
+            blue = CGFloat(hexValue & 0x0000FF) / 255.0
+            alpha = 1.0
+        } else {
+            red = CGFloat((hexValue & 0xFF000000) >> 24) / 255.0
+            green = CGFloat((hexValue & 0x00FF0000) >> 16) / 255.0
+            blue = CGFloat((hexValue & 0x0000FF00) >> 8) / 255.0
+            alpha = CGFloat(hexValue & 0x000000FF) / 255.0
         }
         
-        // 8桁カラーコード (#RRGGBBAA)
-        if hexSanitized.count == 8 {
-            // 修正：適切なビットマスクとシフト処理
-            let red = Double((rgb & 0xFF000000) >> 24) / 255.0
-            let green = Double((rgb & 0x00FF0000) >> 16) / 255.0
-            let blue = Double((rgb & 0x0000FF00) >> 8) / 255.0
-            let alpha = Double(rgb & 0x000000FF) / 255.0
-            
-            print("RGBA値: R:\(red) G:\(green) B:\(blue) A:\(alpha)")
-            self.init(red: red, green: green, blue: blue, opacity: alpha)
-            return
-        }
+        print("変換結果 R: \(red), G: \(green), B: \(blue), A: \(alpha)")
         
-        // その他の長さのHexコードの場合はエラーハンドリング
-        print("対応していないHex形式: \(hexSanitized)")
-        
-        // フォールバック：基本的な安全なカラーとして青を返す
-        self.init(.blue)
+        self.init(red: Double(red), green: Double(green), blue: Double(blue), opacity: Double(alpha))
     }
 }
 
