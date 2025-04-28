@@ -68,7 +68,7 @@ class WidgetDataManager {
         }
         
         // データをTimeTableItem形式に変換
-        let items = filteredItems.compactMap { item in
+        let items: [TimeTableItem] = filteredItems.compactMap { (item: [String: Any]) -> TimeTableItem? in
             guard let subjectName = item["subjectName"] as? String,
                   let period = item["period"] as? String else {
                 return nil
@@ -88,7 +88,7 @@ class WidgetDataManager {
                 room: item["roomName"] as? String ?? "",
                 period: "\(period)限"
             )
-        }.sorted { (item1, item2) in
+        }.sorted { (item1: TimeTableItem, item2: TimeTableItem) in
             // 時限順にソート
             guard let period1 = Int(item1.period?.replacingOccurrences(of: "限", with: "") ?? "0"),
                   let period2 = Int(item2.period?.replacingOccurrences(of: "限", with: "") ?? "0") else {
@@ -112,7 +112,7 @@ class WidgetDataManager {
         print("全データ件数: \(savedData.count)")
         
         // すべてのデータを変換（曜日でフィルタリングしない）
-        return savedData.compactMap { item in
+        return savedData.compactMap { (item: [String: Any]) -> TimeTableItem? in
             guard let subjectName = item["subjectName"] as? String,
                   let period = item["period"] as? String,
                   let dayOfWeek = item["dayOfWeek"] as? Int else {
@@ -137,7 +137,7 @@ class WidgetDataManager {
                 room: item["roomName"] as? String ?? "",
                 period: "\(period)限"
             )
-        }.sorted { (item1, item2) in
+        }.sorted { (item1: TimeTableItem, item2: TimeTableItem) in
             // 時限順にソート
             guard let period1 = Int(item1.period?.replacingOccurrences(of: "限", with: "") ?? "0"),
                   let period2 = Int(item2.period?.replacingOccurrences(of: "限", with: "") ?? "0") else {
