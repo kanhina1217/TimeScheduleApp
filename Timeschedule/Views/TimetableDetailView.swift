@@ -112,7 +112,23 @@ struct TimetableDetailView: View {
     private func getTimetablePeriod(_ timetable: NSManagedObject) -> Int16 {
         return timetable.value(forKey: "period") as? Int16 ?? 1
     }
-
+    
+    // 曜日のインデックス変換メソッド
+    
+    /// CoreDataの曜日(0=日曜, 1=月曜...)から平日インデックス(0=月曜, 1=火曜...)へ変換
+    private func convertCoreDataDayToWeekdayIndex(_ coreDataDay: Int) -> Int {
+        // CoreDataの日付が0=日曜、1=月曜...の場合
+        // 0=月曜、1=火曜...に変換
+        return (coreDataDay + 6) % 7
+    }
+    
+    /// 平日インデックス(0=月曜, 1=火曜...)からCoreDataの曜日(0=日曜, 1=月曜...)へ変換
+    private func convertWeekdayIndexToCoreDataDay(_ weekdayIndex: Int) -> Int {
+        // 0=月曜、1=火曜...から
+        // CoreDataの0=日曜、1=月曜...に変換
+        return (weekdayIndex + 1) % 7
+    }
+    
     var body: some View {
         NavigationView {
             VStack {

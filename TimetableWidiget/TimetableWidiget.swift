@@ -48,12 +48,16 @@ class WidgetDataManager {
         
         print("読み込んだデータ件数: \(savedData.count)")
         
-        // 指定された曜日の時間割のみフィルタリング (0=日曜, 1=月曜, 2=火曜...)
+        // 平日インデックス(0=月曜, 1=火曜...)をCoreData形式(0=日曜, 1=月曜...)に変換
+        let coreDataWeekday = convertWeekdayIndexToCoreDataDay(weekday)
+        print("検索する曜日: 平日インデックス \(weekday) → CoreData形式 \(coreDataWeekday)")
+        
+        // 指定された曜日の時間割のみフィルタリング (CoreData形式: 0=日曜, 1=月曜, 2=火曜...)
         let filteredItems = savedData.filter { item in
             if let dayOfWeek = item["dayOfWeek"] as? Int {
                 // 曜日が一致するデータのみを取得
-                let matches = dayOfWeek == weekday
-                print("曜日比較: データ上の曜日 \(dayOfWeek) vs 検索曜日 \(weekday) = \(matches ? "一致" : "不一致")")
+                let matches = dayOfWeek == coreDataWeekday
+                print("曜日比較: データ上の曜日 \(dayOfWeek) vs 検索曜日 \(coreDataWeekday) = \(matches ? "一致" : "不一致")")
                 return matches
             }
             return false
@@ -145,6 +149,13 @@ class WidgetDataManager {
             }
             return period1 < period2
         }
+    }
+    
+    // 平日インデックス(0=月曜, 1=火曜...)からCoreDataの曜日(0=日曜, 1=月曜...)へ変換
+    private func convertWeekdayIndexToCoreDataDay(_ weekdayIndex: Int) -> Int {
+        // 0=月曜、1=火曜...から
+        // CoreDataの0=日曜、1=月曜...に変換
+        return (weekdayIndex + 1) % 7
     }
 }
 
