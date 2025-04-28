@@ -9,7 +9,7 @@ struct TimetableWidgetEntryView: View {
     // 曜日表示のための配列
     private let weekdayNames = ["日", "月", "火", "水", "木", "金", "土"]
     
-    // 曜日を取得
+    // 曜日を取得 (Calendar形式: 1=日曜日, 2=月曜日...)
     private func getWeekday(_ date: Date) -> Int {
         let calendar = Calendar.current
         return calendar.component(.weekday, from: date)
@@ -40,8 +40,11 @@ struct TimetableWidgetEntryView: View {
     }
     
     var body: some View {
-        // 今日の曜日を取得
-        let weekday = getWeekday(Date())
+        // 今日の曜日を取得（Calendar形式）
+        let calendarWeekday = getWeekday(Date())
+        
+        // 日本式インデックスに変換（0=日曜日、1=月曜日...）
+        let japaneseWeekday = calendarWeekday - 1
         
         ZStack {
             // 背景
@@ -51,7 +54,7 @@ struct TimetableWidgetEntryView: View {
             VStack(spacing: 6) {
                 // ヘッダー
                 HStack {
-                    Text("\(weekdayNames[weekday - 1])曜日の時間割")
+                    Text("\(weekdayNames[japaneseWeekday])曜日の時間割")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.primary)
                     
@@ -73,7 +76,7 @@ struct TimetableWidgetEntryView: View {
                             .font(.system(size: 24))
                             .foregroundColor(.secondary)
                         
-                        Text("今日の授業はありません")
+                        Text("\(weekdayNames[japaneseWeekday])曜日の授業はありません")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -109,6 +112,15 @@ struct TimetableWidgetEntryView: View {
                         }
                     }
                 }
+                
+                // デバッグ情報表示（開発時に役立ちます）
+                #if DEBUG
+                Spacer()
+                Text("曜日情報: Cal=\(calendarWeekday), JP=\(japaneseWeekday)")
+                    .font(.system(size: 8))
+                    .foregroundColor(.secondary)
+                    .padding(.bottom, 2)
+                #endif
             }
         }
     }

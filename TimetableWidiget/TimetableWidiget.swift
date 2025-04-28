@@ -201,15 +201,38 @@ struct TimetableWidgetProvider: TimelineProvider {
             let today = calendar.component(.weekday, from: Date())
             
             // 日本の曜日表記に合わせて調整 (0 = 日曜日, 1 = 月曜日, ...)
-            let japaneseWeekday = today - 1
+            // CoreDataでの保存と一致するように変換
+            let dayIndexInCoreData = today - 1
             
-            print("ウィジェット - 現在の曜日: \(today) → 日本式インデックス: \(japaneseWeekday)")
+            // ログ出力で確認
+            print("ウィジェット - 取得した曜日情報:")
+            print("Calendar曜日: \(today) (1=日曜, 2=月曜, ...)")
+            print("CoreData曜日インデックス: \(dayIndexInCoreData) (0=日曜, 1=月曜, ...)")
             
-            // その曜日の時間割を取得
-            let todayItems = try widgetDataManager.getTimetableForWeekday(japaneseWeekday)
+            // 日本語の曜日名を表示（デバッグ用）
+            let dayNames = ["日", "月", "火", "水", "木", "金", "土"]
+            if dayIndexInCoreData >= 0 && dayIndexInCoreData < dayNames.count {
+                print("今日は\(dayNames[dayIndexInCoreData])曜日です")
+            }
             
+            // CoreDataインデックスで時間割を検索
+            let todayItems = try widgetDataManager.getTimetableForWeekday(dayIndexInCoreData)
+            
+            // データが取得できない場合はすべての曜日を試してデバッグする
             if todayItems.isEmpty {
-                print("警告: 今日(\(japaneseWeekday))の授業データがありません")
+                print("警告: 今日(\(dayIndexInCoreData))の授業データがありません。全曜日のデータを確認します。")
+                
+                // 全曜日のデータ件数を確認（デバッグ用）
+                for day in 0..<7 {
+                    let itemsForDay = try widgetDataManager.getTimetableForWeekday(day)
+                    print("\(dayNames[day])曜日(\(day))のデータ: \(itemsForDay.count)件")
+                }
+                
+                // それでもデータが取得できない場合はデバッグモードのようにすべてのデータを表示する
+                if debugMode {
+                    let allItems = widgetDataManager.getAllTimetableData()
+                    return TimetableWidgetEntry(date: Date(), timetableItems: allItems)
+                }
             } else {
                 print("今日の授業データ: \(todayItems.count)件")
             }
