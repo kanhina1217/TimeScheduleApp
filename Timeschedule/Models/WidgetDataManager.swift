@@ -113,6 +113,11 @@ class WidgetDataManager {
                             itemDict["patternID"] = "default"
                         }
                         
+                        // 色情報を追加
+                        if let color = timetable.value(forKey: "color") as? String {
+                            itemDict["color"] = color
+                        }
+                        
                         // 任意の項目は存在する場合のみ追加
                         if let classroom = timetable.value(forKey: "classroom") as? String {
                             itemDict["roomName"] = classroom

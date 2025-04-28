@@ -103,7 +103,8 @@ class WidgetDataManager {
                 startTime: timeSlot,
                 teacher: item["teacher"] as? String ?? "",
                 room: item["roomName"] as? String ?? "",
-                period: "\(period)限"
+                period: "\(period)限",
+                color: item["colorHex"] as? String ?? "#7FB3D5"  // デフォルト色を設定
             )
         }.sorted { (item1: TimeTableItem, item2: TimeTableItem) in
             // 時限順にソート
@@ -152,7 +153,8 @@ class WidgetDataManager {
                 startTime: timeSlot,
                 teacher: item["teacher"] as? String ?? "",
                 room: item["roomName"] as? String ?? "",
-                period: "\(period)限"
+                period: "\(period)限",
+                color: item["colorHex"] as? String ?? "#7FB3D5"  // デフォルト色を設定
             )
         }.sorted { (item1: TimeTableItem, item2: TimeTableItem) in
             // 時限順にソート
@@ -263,9 +265,9 @@ struct TimetableWidgetProvider: TimelineProvider {
     // プレビュー用のサンプルデータ
     private func sampleTimetableItems() -> [TimeTableItem] {
         return [
-            TimeTableItem(subject: "プログラミング概論", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限"),
-            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限"),
-            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限")
+            TimeTableItem(subject: "プログラミング概論", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限", color: "#7FB3D5"),
+            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限", color: "#F5B041"),
+            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限", color: "#82E0AA")
         ]
     }
 }
@@ -283,6 +285,7 @@ struct TimeTableItem: Hashable {
     var teacher: String?
     var room: String?
     var period: String?
+    var color: String?  // 色情報を追加
     
     // 位置情報をroomに統合
     var location: String? {
@@ -314,8 +317,8 @@ struct TimetableWidget: Widget {
 struct TimetableWidget_Previews: PreviewProvider {
     static var previews: some View {
         let sampleItems = [
-            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限"),
-            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限")
+            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限", color: "#7FB3D5"),
+            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限", color: "#F5B041")
         ]
         
         let entry = TimetableWidgetEntry(date: Date(), timetableItems: sampleItems)

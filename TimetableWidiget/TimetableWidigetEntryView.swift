@@ -15,25 +15,15 @@ struct TimetableWidgetEntryView: View {
         return calendar.component(.weekday, from: date)
     }
     
-    // 科目名からカラーを取得
-    private func colorForSubject(_ subject: String) -> Color {
-        let colors: [Color] = [
-            .red,     // 赤
-            .blue,    // 青
-            .green,   // 緑
-            .yellow,  // 黄
-            .orange,  // 橙
-            .purple,  // 紫
-            .gray     // 灰
-        ]
-        
-        // 科目名から一貫性のあるカラーを生成
-        var hash = 0
-        for char in subject {
-            hash = ((hash << 5) &+ hash) &+ Int(char.asciiValue ?? 0)
+    // 科目名からカラーを取得（色情報がない場合のフォールバック）
+    private func colorForSubject(_ subject: String, colorHex: String? = nil) -> Color {
+        // 色情報が存在する場合はそれを使用
+        if let colorHex = colorHex, !colorHex.isEmpty {
+            return Color(hex: colorHex) ?? .blue
         }
         
-        return colors[abs(hash) % colors.count]
+        // 色情報がない場合はデフォルトの青色を返す
+        return .blue
     }
     
     // 時限を整数に変換する関数
@@ -132,7 +122,7 @@ struct TimetableWidgetEntryView: View {
                             ForEach(1...5, id: \.self) { period in
                                 if let item = classForPeriod(period) {
                                     // 授業があるセル
-                                    let backgroundColor = colorForSubject(item.subject ?? "")
+                                    let backgroundColor = colorForSubject(item.subject ?? "", colorHex: item.color)
                                     
                                     VStack(spacing: 2) {
                                         Text(item.subject ?? "")
@@ -175,15 +165,52 @@ struct TimetableWidgetEntryView: View {
     }
 }
 
+// 16進数文字列からColorを生成する拡張機能
+extension Color {
+    init?(hex: String) {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+        
+        var rgb: UInt64 = 0
+        
+        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else {
+            return nil
+        }
+        
+        // 6桁カラーコード (#RRGGBB)
+        if hexSanitized.count == 6 {
+            let red = Double((rgb & 0xFF0000) >> 16) / 255.0
+            let green = Double((rgb & 0x00FF00) >> 8) / 255.0
+            let blue = Double(rgb & 0x0000FF) / 255.0
+            
+            self.init(red: red, green: green, blue: blue)
+            return
+        }
+        
+        // 8桁カラーコード (#RRGGBBAA)
+        if hexSanitized.count == 8 {
+            let red = Double((rgb & 0xFF000000) >> 24) / 255.0
+            let green = Double((rgb & 0x00FF0000) >> 16) / 255.0
+            let blue = Double((rgb & 0x0000FF00) >> 8) / 255.0
+            let alpha = Double(rgb & 0x000000FF) / 255.0
+            
+            self.init(red: red, green: green, blue: blue, opacity: alpha)
+            return
+        }
+        
+        return nil
+    }
+}
+
 // 時間割のプレビュー
 struct TimetableWidgetEntryView_Previews: PreviewProvider {
     static var previews: some View {
         let sampleItems = [
-            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限"),
-            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限"),
-            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限"),
-            TimeTableItem(subject: "情報工学", startTime: "14:40-16:10", teacher: "田中先生", room: "D401", period: "4限"),
-            TimeTableItem(subject: "プロジェクト演習", startTime: "16:20-17:50", teacher: "小林先生", room: "E501", period: "5限")
+            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限", color: "#FF0000"),
+            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限", color: "#0000FF"),
+            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限", color: "#00FF00"),
+            TimeTableItem(subject: "情報工学", startTime: "14:40-16:10", teacher: "田中先生", room: "D401", period: "4限", color: "#FF00FF"),
+            TimeTableItem(subject: "プロジェクト演習", startTime: "16:20-17:50", teacher: "小林先生", room: "E501", period: "5限", color: "#FFFF00")
         ]
         
         let entry = TimetableWidgetEntry(date: Date(), timetableItems: sampleItems)
