@@ -11,7 +11,7 @@ struct TaskEditView: View {
     // フォーム入力用の状態変数
     @State private var title = ""
     @State private var subjectName = ""
-    @State private var color = "blue"
+    @State private var colorIndex = 0 // 数値インデックスに変更
     @State private var dueDate = Date()
     @State private var hasDueDate = false
     @State private var priority: Task.Priority = .normal
@@ -23,22 +23,41 @@ struct TaskEditView: View {
     @State private var showingSubjectPicker = false
     @State private var subjects: [SubjectInfo] = []
     
-    // 色の選択肢
-    private let colorOptions = [
-        "red": "赤",
-        "blue": "青",
-        "green": "緑",
-        "yellow": "黄",
-        "purple": "紫",
-        "orange": "オレンジ",
-        "gray": "グレー"
+    // 色のパレット - TimetableWidigetEntryViewと統一
+    private let colorPalette: [Color] = [
+        Color.blue,
+        Color.red, 
+        Color.green,
+        Color.orange, 
+        Color.purple, 
+        Color.yellow,
+        Color.pink,
+        Color.gray,
+        Color(red: 0.6, green: 0.4, blue: 0.2), // ブラウン
+        Color(red: 0.0, green: 0.8, blue: 0.8), // ターコイズ
+        Color(red: 0.0, green: 0.5, blue: 0.5)  // ティール
+    ]
+    
+    // 色の選択肢 - インデックスと日本語名のマッピング
+    private let colorOptions: [Int: String] = [
+        0: "青",
+        1: "赤",
+        2: "緑",
+        3: "オレンジ",
+        4: "紫",
+        5: "黄",
+        6: "ピンク",
+        7: "グレー",
+        8: "ブラウン",
+        9: "ターコイズ",
+        10: "ティール"
     ]
     
     // 時間割から取得した科目情報を格納する構造体
     struct SubjectInfo: Identifiable, Hashable {
         let id = UUID()
         let name: String
-        let color: String
+        let colorIndex: Int // 数値インデックスに変更
         
         func hash(into hasher: inout Hasher) {
             hasher.combine(name)
@@ -54,11 +73,11 @@ struct TaskEditView: View {
         self.task = task
     }
     
-    // 科目名と色を指定して初期化するイニシャライザ
-    init(initialSubject: String, initialColor: String = "blue", taskType: Task.TaskType = .homework) {
+    // 科目名と色インデックスを指定して初期化するイニシャライザ
+    init(initialSubject: String, initialColorIndex: Int = 0, taskType: Task.TaskType = .homework) {
         self.task = nil
         _subjectName = State(initialValue: initialSubject)
-        _color = State(initialValue: initialColor)
+        _colorIndex = State(initialValue: initialColorIndex)
         _taskType = State(initialValue: taskType)
     }
     
@@ -66,7 +85,7 @@ struct TaskEditView: View {
     init(initialSubjectName: String) {
         self.task = nil
         _subjectName = State(initialValue: initialSubjectName)
-        _color = State(initialValue: "blue") // デフォルトの色を設定
+        _colorIndex = State(initialValue: 0) // デフォルトの色インデックスを設定
     }
     
     // 科目情報を事前に取得する代わりに、onAppear時に処理するように修正
@@ -80,7 +99,8 @@ struct TaskEditView: View {
             if let results = try viewContext.fetch(fetchRequest) as? [NSManagedObject],
                let timetable = results.first,
                let foundColor = timetable.value(forKey: "color") as? String {
-                self.color = foundColor
+                // 文字列から数値インデックスへの変換
+                self.colorIndex = colorIndexFromString(foundColor)
             }
         } catch {
             print("科目色の検索に失敗しました: \(error)")
@@ -100,9 +120,9 @@ struct TaskEditView: View {
                         }
                         .pickerStyle(SegmentedPickerStyle())
                         .onChange(of: taskType) { oldValue, newValue in
-                            // タイプが変更されたら、デフォルトの色を設定
-                            if color == oldValue.defaultColor {
-                                color = newValue.defaultColor
+                            // タイプが変更されたら、デフォルトの色インデックスを設定
+                            if colorIndex == taskTypeToDefaultColorIndex(oldValue) {
+                                colorIndex = taskTypeToDefaultColorIndex(newValue)
                             }
                         }
                     }
@@ -125,7 +145,7 @@ struct TaskEditView: View {
                             .onChange(of: subjectName) { oldValue, newValue in
                                 // 科目名が変更されたら、対応する色も自動的に設定
                                 if let selectedSubject = subjects.first(where: { $0.name == newValue }) {
-                                    color = selectedSubject.color
+                                    colorIndex = selectedSubject.colorIndex
                                 }
                             }
                         } else {
@@ -147,14 +167,14 @@ struct TaskEditView: View {
                     }
                     
                     // 色選択
-                    Picker("色", selection: $color) {
-                        ForEach(colorOptions.sorted(by: { $0.value < $1.value }), id: \.key) { key, value in
+                    Picker("色", selection: $colorIndex) {
+                        ForEach(0..<colorPalette.count, id: \.self) { index in
                             HStack {
                                 Circle()
-                                    .fill(colorFromString(key))
+                                    .fill(colorPalette[index])
                                     .frame(width: 20, height: 20)
-                                Text(value)
-                            }.tag(key)
+                                Text(colorOptions[index] ?? "\(index)")
+                            }.tag(index)
                         }
                     }
                     .pickerStyle(MenuPickerStyle())
@@ -223,99 +243,133 @@ struct TaskEditView: View {
         }
     }
     
-    // 色名から色オブジェクトを取得するヘルパーメソッド
-    private func colorFromString(_ colorName: String) -> Color {
-        switch colorName.lowercased() {
-        case "red": return .red
-        case "blue": return .blue
-        case "green": return .green
-        case "yellow": return .yellow
-        case "purple": return .purple
-        case "orange": return .orange
-        default: return .gray
+    // インデックスから色オブジェクトを取得するヘルパーメソッド
+    private func colorFromIndex(_ index: Int) -> Color {
+        if index >= 0 && index < colorPalette.count {
+            return colorPalette[index]
+        }
+        return colorPalette[0] // デフォルトは青
+    }
+    
+    // 文字列から色インデックスを取得するヘルパーメソッド
+    private func colorIndexFromString(_ colorString: String) -> Int {
+        // 数値の場合はそのままインデックスとして使用
+        if let index = Int(colorString), index >= 0 && index < colorPalette.count {
+            return index
+        }
+        
+        // 従来の色名からインデックスへの変換
+        switch colorString.lowercased() {
+        case "red": return 1
+        case "blue": return 0
+        case "green": return 2
+        case "orange": return 3
+        case "purple": return 4
+        case "yellow": return 5
+        case "pink": return 6
+        case "gray": return 7
+        case "brown": return 8
+        case "turquoise": return 9
+        case "teal": return 10
+        default: return 0 // デフォルトは青
         }
     }
     
-    // タスクデータを読み込む
+    // タスクタイプからデフォルトの色インデックスに変換
+    private func taskTypeToDefaultColorIndex(_ type: Task.TaskType) -> Int {
+        switch type {
+        case .homework: return 0 // 青
+        case .exam: return 1 // 赤
+        case .other: return 7 // グレー
+        }
+    }
+    
+    // 科目一覧を読み込む
+    private func loadSubjects() {
+        subjects = []
+        
+        let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "Timetable")
+        fetchRequest.predicate = NSPredicate(value: true)
+        
+        do {
+            let results = try viewContext.fetch(fetchRequest)
+            
+            // 一意な科目名と対応する色を抽出
+            var uniqueSubjects = Set<String>()
+            var subjectInfos: [SubjectInfo] = []
+            
+            for timetable in results {
+                if let name = timetable.value(forKey: "subjectName") as? String,
+                   !name.isEmpty,
+                   !uniqueSubjects.contains(name) {
+                    uniqueSubjects.insert(name)
+                    
+                    // 色文字列からインデックスに変換
+                    var colorIdx = 0
+                    if let colorString = timetable.value(forKey: "color") as? String {
+                        colorIdx = colorIndexFromString(colorString)
+                    }
+                    
+                    subjectInfos.append(SubjectInfo(name: name, colorIndex: colorIdx))
+                }
+            }
+            
+            subjects = subjectInfos.sorted(by: { $0.name < $1.name })
+        } catch {
+            print("科目の読み込みに失敗しました: \(error)")
+        }
+    }
+    
+    // タスクデータの読み込み
     private func loadTaskData() {
         if let task = task {
             title = task.title ?? ""
             subjectName = task.subjectName ?? ""
-            color = task.color ?? "blue"
             
-            if let date = task.dueDate {
-                dueDate = date
+            // 色文字列からインデックスに変換
+            if let colorString = task.color {
+                colorIndex = colorIndexFromString(colorString)
+            }
+            
+            taskType = task.taskType ?? .homework
+            
+            if let taskDueDate = task.dueDate {
+                dueDate = taskDueDate
                 hasDueDate = true
             } else {
                 hasDueDate = false
             }
             
-            // taskTypeプロパティを安全に参照
-            taskType = task.taskTypeEnum
-            
-            priority = task.priorityEnum
+            priority = task.priority ?? .normal
             note = task.note ?? ""
+        } else if !subjectName.isEmpty {
+            // 科目名が指定されている場合、科目に適した色を設定
+            setupInitialSubjectColor(subjectName)
         }
     }
     
-    // 既存の科目一覧を読み込む（時間割から）
-    private func loadSubjects() {
-        // 時間割から科目情報を取得する
-        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Timetable")
-        fetchRequest.predicate = NSPredicate(format: "subjectName != nil")
-        
-        do {
-            if let timetables = try viewContext.fetch(fetchRequest) as? [NSManagedObject] {
-                var subjectDict = [String: String]() // 科目名をキー、色を値とする辞書
-                
-                for timetable in timetables {
-                    if let subjectName = timetable.value(forKey: "subjectName") as? String,
-                       !subjectName.isEmpty {
-                        let color = timetable.value(forKey: "color") as? String ?? "blue"
-                        subjectDict[subjectName] = color
-                    }
-                }
-                
-                // 辞書から重複のない科目情報の配列を作成
-                subjects = subjectDict.map { SubjectInfo(name: $0.key, color: $0.value) }
-                    .sorted { $0.name < $1.name }
-            }
-        } catch {
-            print("科目情報の読み込みに失敗しました: \(error)")
-        }
-    }
-    
-    // タスクを保存する
+    // タスクの保存処理
     private func saveTask() {
-        var taskToSave: Task
+        let taskToSave = task ?? Task(context: viewContext)
         
-        if let existingTask = task {
-            // 既存のタスクを更新
-            taskToSave = existingTask
-        } else {
-            // 新規タスクを作成
-            taskToSave = Task(context: viewContext)
-            taskToSave.id = UUID()
-            taskToSave.createdAt = Date() // もし定義されている場合
-        }
-        
-        // タスク情報を設定
         taskToSave.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        taskToSave.subjectName = subjectName
-        taskToSave.color = color
-        taskToSave.dueDate = hasDueDate ? dueDate : nil
-        taskToSave.priority = priority.rawValue
-        taskToSave.isCompleted = false
-        taskToSave.note = note
-        taskToSave.taskType = taskType.rawValue // 安全に設定
-        taskToSave.updatedAt = Date() // もし定義されている場合
+        taskToSave.subjectName = subjectName.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // 保存を実行
+        // 色インデックスを文字列として保存
+        taskToSave.color = String(colorIndex)
+        
+        taskToSave.taskType = taskType
+        taskToSave.dueDate = hasDueDate ? dueDate : nil
+        taskToSave.priority = priority
+        taskToSave.note = note
+        taskToSave.timestamp = Date()
+        
+        // 課題情報を保存
         do {
             try viewContext.save()
         } catch {
             let nsError = error as NSError
-            print("タスクの保存中にエラーが発生しました: \(nsError), \(nsError.userInfo)")
+            print("タスク保存エラー: \(nsError), \(nsError.userInfo)")
         }
     }
 }

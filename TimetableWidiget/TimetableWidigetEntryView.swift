@@ -9,46 +9,48 @@ struct TimetableWidgetEntryView: View {
     // 曜日表示のための配列
     private let weekdayNames = ["日", "月", "火", "水", "木", "金", "土"]
     
+    // 数値インデックスに対応する色の配列
+    private let indexColors: [Color] = [
+        .blue,          // 0: デフォルト
+        .red,           // 1
+        .green,         // 2
+        .orange,        // 3
+        .purple,        // 4
+        .pink,          // 5
+        .yellow,        // 6
+        .gray,          // 7
+        .cyan,          // 8
+        .indigo,        // 9
+        .mint,          // 10
+        .brown,         // 11
+        .teal           // 12
+    ]
+    
     // 曜日を取得
     private func getWeekday(_ date: Date) -> Int {
         let calendar = Calendar.current
         return calendar.component(.weekday, from: date)
     }
     
-    // 科目名からカラーを取得（色情報がない場合のフォールバック）
-    private func colorForSubject(_ subject: String, colorHex: String? = nil) -> Color {
+    // 科目名から色インデックスを解釈してカラーを取得
+    private func colorForSubject(_ subject: String, colorIndex: String? = nil) -> Color {
         // 色情報が存在する場合はそれを使用
-        if let colorHex = colorHex, !colorHex.isEmpty {
+        if let colorIndexStr = colorIndex, !colorIndexStr.isEmpty {
             // デバッグ出力
-            print("色情報を適用: \(subject) → \(colorHex)")
+            print("色情報を適用: \(subject) → インデックス: \(colorIndexStr)")
             
-            // 色変換が失敗した場合のフォールバック処理を強化
-            if let color = Color(hex: colorHex) {
-                print("成功: \(subject)の色を設定 → \(colorHex)")
-                return color
+            // 文字列から数値に変換
+            if let index = Int(colorIndexStr), index >= 0 && index < indexColors.count {
+                print("成功: \(subject)の色を設定 → インデックス: \(index)")
+                return indexColors[index]
             } else {
-                print("警告: \(subject)のカラーコード変換に失敗 \(colorHex)")
-                
-                // 基本色のマッピングを試みる（色名が入っている可能性もある）
-                let colorMap: [String: Color] = [
-                    "red": .red, "blue": .blue, "green": .green,
-                    "yellow": .yellow, "orange": .orange, "purple": .purple,
-                    "pink": .pink, "gray": .gray, "black": .black
-                ]
-                
-                let lowerColorHex = colorHex.lowercased()
-                for (name, color) in colorMap {
-                    if lowerColorHex.contains(name) {
-                        print("色名マッピングで成功: \(subject) → \(name)")
-                        return color
-                    }
-                }
+                print("警告: \(subject)のカラーインデックス変換に失敗 \(colorIndexStr)")
             }
         }
         
         print("科目 \(subject) に有効な色情報なし、デフォルト青を使用")
         // 色情報がない場合はデフォルトの青色を返す
-        return .blue
+        return indexColors[0]
     }
     
     // 時限を整数に変換する関数
@@ -147,7 +149,7 @@ struct TimetableWidgetEntryView: View {
                             ForEach(1...5, id: \.self) { period in
                                 if let item = classForPeriod(period) {
                                     // 授業があるセル
-                                    let backgroundColor = colorForSubject(item.subject ?? "", colorHex: item.color)
+                                    let backgroundColor = colorForSubject(item.subject ?? "", colorIndex: item.color)
                                     
                                     VStack(spacing: 2) {
                                         Text(item.subject ?? "")
@@ -190,74 +192,15 @@ struct TimetableWidgetEntryView: View {
     }
 }
 
-// 16進数文字列からColorを生成する拡張機能
-extension Color {
-    init?(hex: String) {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
-        
-        // デバッグ出力
-        print("Hexカラー変換: \(hexSanitized)")
-        
-        // 3桁カラーコード (#RGB) を6桁に展開
-        if hexSanitized.count == 3 {
-            var expandedHex = ""
-            for char in hexSanitized {
-                expandedHex.append(String(repeating: char, count: 2))
-            }
-            hexSanitized = expandedHex
-            print("3桁カラーコードを展開: \(hexSanitized)")
-        }
-        
-        // 4桁カラーコード (#RGBA) を8桁に展開
-        if hexSanitized.count == 4 {
-            var expandedHex = ""
-            for char in hexSanitized {
-                expandedHex.append(String(repeating: char, count: 2))
-            }
-            hexSanitized = expandedHex
-            print("4桁カラーコードを展開: \(hexSanitized)")
-        }
-        
-        // 6桁または8桁のHexコードのみを許容
-        guard hexSanitized.count == 6 || hexSanitized.count == 8,
-              let hexValue = UInt64(hexSanitized, radix: 16) else {
-            print("無効なHexカラーフォーマット: \(hex)")
-            return nil
-        }
-        
-        // RGB値を抽出
-        let r, g, b: Double
-        let a: Double
-        
-        if hexSanitized.count == 6 {
-            r = Double((hexValue & 0xFF0000) >> 16) / 255.0
-            g = Double((hexValue & 0x00FF00) >> 8) / 255.0
-            b = Double(hexValue & 0x0000FF) / 255.0
-            a = 1.0
-        } else {
-            r = Double((hexValue & 0xFF000000) >> 24) / 255.0
-            g = Double((hexValue & 0x00FF0000) >> 16) / 255.0
-            b = Double((hexValue & 0x0000FF00) >> 8) / 255.0
-            a = Double(hexValue & 0x000000FF) / 255.0
-        }
-        
-        print("RGB値に変換: R=\(r), G=\(g), B=\(b), A=\(a)")
-        
-        // SwiftUIのColorのイニシャライザの正しい形式で呼び出し
-        self.init(red: r, green: g, blue: b, opacity: a)
-    }
-}
-
 // 時間割のプレビュー
 struct TimetableWidgetEntryView_Previews: PreviewProvider {
     static var previews: some View {
         let sampleItems = [
-            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限", color: "#FF0000"),
-            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限", color: "#0000FF"),
-            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限", color: "#00FF00"),
-            TimeTableItem(subject: "情報工学", startTime: "14:40-16:10", teacher: "田中先生", room: "D401", period: "4限", color: "#FF00FF"),
-            TimeTableItem(subject: "プロジェクト演習", startTime: "16:20-17:50", teacher: "小林先生", room: "E501", period: "5限", color: "#FFFF00")
+            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限", color: "1"),
+            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限", color: "2"),
+            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限", color: "3"),
+            TimeTableItem(subject: "情報工学", startTime: "14:40-16:10", teacher: "田中先生", room: "D401", period: "4限", color: "4"),
+            TimeTableItem(subject: "プロジェクト演習", startTime: "16:20-17:50", teacher: "小林先生", room: "E501", period: "5限", color: "5")
         ]
         
         let entry = TimetableWidgetEntry(date: Date(), timetableItems: sampleItems)
