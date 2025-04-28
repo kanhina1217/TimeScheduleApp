@@ -18,16 +18,13 @@ struct TimetableWidgetEntryView: View {
     // 科目名からカラーを取得
     private func colorForSubject(_ subject: String) -> Color {
         let colors: [Color] = [
-            .blue,
-            .green,
-            .orange,
-            .pink,
-            .purple,
-            .teal,
-            .red,
-            .indigo,
-            .mint,
-            .cyan
+            .red,     // 赤
+            .blue,    // 青
+            .green,   // 緑
+            .yellow,  // 黄
+            .orange,  // 橙
+            .purple,  // 紫
+            .gray     // 灰
         ]
         
         // 科目名から一貫性のあるカラーを生成

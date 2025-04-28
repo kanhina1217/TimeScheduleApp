@@ -38,7 +38,7 @@ struct TimetableDetailView: View {
     @State private var selectedDay: Int
     @State private var selectedPeriod: Int
     
-    // 複数選択機能用の状態変数
+    // 複数選択機能
     @State private var isMultiSelectionMode: Bool = false
     @State private var selectedCells: [CellPosition] = [] // タプルから構造体配列に変更
     @State private var daySelections: [Bool] = Array(repeating: false, count: 7) // 曜日選択状態
@@ -62,7 +62,7 @@ struct TimetableDetailView: View {
     }
     
     // 利用可能な色の配列
-    private let availableColors = ["red", "blue", "green", "yellow", "purple", "gray"]
+    private let availableColors = ["red", "blue", "green", "yellow", "orange", "purple", "gray"]
     
     // 初期化処理（既存の時間割編集用）
     init(timetable: NSManagedObject?, day: Int, period: Int, pattern: NSManagedObject) {
@@ -621,6 +621,7 @@ struct TimetableDetailView: View {
             case "blue": return .blue
             case "green": return .green
             case "yellow": return .yellow
+            case "orange": return .orange
             case "purple": return .purple
             default: return .gray
             }
