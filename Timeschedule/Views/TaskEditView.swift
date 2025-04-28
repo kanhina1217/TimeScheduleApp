@@ -280,7 +280,6 @@ struct TaskEditView: View {
         switch type {
         case .homework: return 0 // 青
         case .exam: return 1 // 赤
-        case .other: return 7 // グレー
         }
     }
     
@@ -331,7 +330,12 @@ struct TaskEditView: View {
                 colorIndex = colorIndexFromString(colorString)
             }
             
-            taskType = task.taskType ?? .homework
+            // taskTypeの読み込み
+            if let typeStr = task.taskType {
+                taskType = Task.TaskType(rawValue: typeStr) ?? .homework
+            } else {
+                taskType = .homework
+            }
             
             if let taskDueDate = task.dueDate {
                 dueDate = taskDueDate
@@ -340,7 +344,13 @@ struct TaskEditView: View {
                 hasDueDate = false
             }
             
-            priority = task.priority ?? .normal
+            // priorityの読み込み
+            if let priorityEnum = Task.Priority(rawValue: task.priority) {
+                priority = priorityEnum
+            } else {
+                priority = .normal
+            }
+            
             note = task.note ?? ""
         } else if !subjectName.isEmpty {
             // 科目名が指定されている場合、科目に適した色を設定
@@ -358,11 +368,25 @@ struct TaskEditView: View {
         // 色インデックスを文字列として保存
         taskToSave.color = String(colorIndex)
         
-        taskToSave.taskType = taskType
+        // taskTypeの保存
+        taskToSave.taskType = taskType.rawValue
+        
         taskToSave.dueDate = hasDueDate ? dueDate : nil
-        taskToSave.priority = priority
+        
+        // priorityの保存
+        taskToSave.priority = priority.rawValue
+        
         taskToSave.note = note
-        taskToSave.timestamp = Date()
+        
+        // タイムスタンプの更新
+        // timestamp -> updatedAt に変更
+        if let id = taskToSave.id {
+            taskToSave.updatedAt = Date()
+        } else {
+            taskToSave.id = UUID()
+            taskToSave.createdAt = Date()
+            taskToSave.updatedAt = Date()
+        }
         
         // 課題情報を保存
         do {

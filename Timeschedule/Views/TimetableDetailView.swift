@@ -486,7 +486,7 @@ struct TimetableDetailView: View {
                     }
                     
                     NavigationLink(destination: 
-                        TaskEditView(initialSubject: subjectName, initialColor: selectedColor)
+                        TaskEditView(initialSubject: subjectName, initialColorIndex: colorIndexFromString(selectedColor))
                     ) {
                         HStack {
                             Image(systemName: "plus.circle")
@@ -761,6 +761,21 @@ struct TimetableDetailView: View {
                     print("時間割の削除エラー: \(nsError), \(nsError.userInfo)")
                 }
             }
+        }
+    }
+    
+    // 文字列から色インデックスを取得するヘルパーメソッド
+    private func colorIndexFromString(_ colorString: String) -> Int {
+        // 色名からインデックスへの変換
+        switch colorString.lowercased() {
+        case "red": return 1
+        case "blue": return 0
+        case "green": return 2
+        case "yellow": return 5
+        case "orange": return 3
+        case "purple": return 4
+        case "gray": return 7
+        default: return 0 // デフォルトは青
         }
     }
 }
