@@ -226,23 +226,26 @@ extension Color {
             return nil
         }
         
-        let red, green, blue, alpha: CGFloat
+        // RGB値を抽出
+        let r, g, b: Double
+        let a: Double
         
         if hexSanitized.count == 6 {
-            red = CGFloat((hexValue & 0xFF0000) >> 16) / 255.0
-            green = CGFloat((hexValue & 0x00FF00) >> 8) / 255.0
-            blue = CGFloat(hexValue & 0x0000FF) / 255.0
-            alpha = 1.0
+            r = Double((hexValue & 0xFF0000) >> 16) / 255.0
+            g = Double((hexValue & 0x00FF00) >> 8) / 255.0
+            b = Double(hexValue & 0x0000FF) / 255.0
+            a = 1.0
         } else {
-            red = CGFloat((hexValue & 0xFF000000) >> 24) / 255.0
-            green = CGFloat((hexValue & 0x00FF0000) >> 16) / 255.0
-            blue = CGFloat((hexValue & 0x0000FF00) >> 8) / 255.0
-            alpha = CGFloat(hexValue & 0x000000FF) / 255.0
+            r = Double((hexValue & 0xFF000000) >> 24) / 255.0
+            g = Double((hexValue & 0x00FF0000) >> 16) / 255.0
+            b = Double((hexValue & 0x0000FF00) >> 8) / 255.0
+            a = Double(hexValue & 0x000000FF) / 255.0
         }
         
-        print("変換結果 R: \(red), G: \(green), B: \(blue), A: \(alpha)")
+        print("RGB値に変換: R=\(r), G=\(g), B=\(b), A=\(a)")
         
-        self.init(red: Double(red), green: Double(green), blue: Double(blue), opacity: Double(alpha))
+        // SwiftUIのColorのイニシャライザの正しい形式で呼び出し
+        self.init(red: r, green: g, blue: b, opacity: a)
     }
 }
 
