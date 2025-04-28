@@ -47,6 +47,20 @@ struct TimetableDetailView: View {
     // 曜日と時限
     private let daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"]
     
+    /// CoreDataの曜日(0=日曜, 1=月曜...)から平日インデックス(0=月曜, 1=火曜...)へ変換
+    private func convertCoreDataDayToWeekdayIndex(_ coreDataDay: Int) -> Int {
+        // CoreDataの日付が0=日曜、1=月曜...の場合
+        // 0=月曜、1=火曜...に変換
+        return (coreDataDay + 6) % 7
+    }
+    
+    /// 平日インデックス(0=月曜, 1=火曜...)からCoreDataの曜日(0=日曜, 1=月曜...)へ変換
+    private func convertWeekdayIndexToCoreDataDay(_ weekdayIndex: Int) -> Int {
+        // 0=月曜、1=火曜...から
+        // CoreDataの0=日曜、1=月曜...に変換
+        return (weekdayIndex + 1) % 7
+    }
+    
     // 利用可能な色の配列
     private let availableColors = ["red", "blue", "green", "yellow", "purple", "gray"]
     
@@ -632,8 +646,10 @@ struct TimetableDetailView: View {
     // 指定した日時のデータを取得
     private func fetchExistingTimetable(day: Int, period: Int) -> NSManagedObject? {
         let request = NSFetchRequest<NSFetchRequestResult>(entityName: "Timetable")
+        // UIの日付インデックス(0=月曜)からCoreData形式(0=日曜)に変換
+        let coreDataDay = convertWeekdayIndexToCoreDataDay(day)
         request.predicate = NSPredicate(format: "dayOfWeek == %d AND period == %d", 
-                                    Int16(day), Int16(period))
+                                    Int16(coreDataDay), Int16(period))
         request.fetchLimit = 1
         
         do {
@@ -667,7 +683,9 @@ struct TimetableDetailView: View {
                 let entity = NSEntityDescription.entity(forEntityName: "Timetable", in: viewContext)!
                 timetable = NSManagedObject(entity: entity, insertInto: viewContext)
                 timetable.setValue(UUID(), forKey: "id")
-                timetable.setValue(Int16(selectedDay), forKey: "dayOfWeek")
+                // UIの日付インデックス(0=月曜)からCoreData形式(0=日曜)に変換
+                let coreDataDay = convertWeekdayIndexToCoreDataDay(selectedDay)
+                timetable.setValue(Int16(coreDataDay), forKey: "dayOfWeek")
                 timetable.setValue(Int16(selectedPeriod), forKey: "period")
             }
             
@@ -703,7 +721,9 @@ struct TimetableDetailView: View {
                     let entity = NSEntityDescription.entity(forEntityName: "Timetable", in: viewContext)!
                     timetable = NSManagedObject(entity: entity, insertInto: viewContext)
                     timetable.setValue(UUID(), forKey: "id")
-                    timetable.setValue(Int16(cell.day), forKey: "dayOfWeek")
+                    // UIの日付インデックス(0=月曜)からCoreData形式(0=日曜)に変換
+                    let coreDataDay = convertWeekdayIndexToCoreDataDay(cell.day)
+                    timetable.setValue(Int16(coreDataDay), forKey: "dayOfWeek")
                     timetable.setValue(Int16(cell.period), forKey: "period")
                 }
                 

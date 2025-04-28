@@ -139,6 +139,22 @@ struct MainView: View {
     private let daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"]
     private let periodCount = 6
     
+    // 曜日のインデックス変換メソッド
+    
+    /// CoreDataの曜日(0=日曜, 1=月曜...)から平日インデックス(0=月曜, 1=火曜...)へ変換
+    private func convertCoreDataDayToWeekdayIndex(_ coreDataDay: Int) -> Int {
+        // CoreDataの日付が0=日曜、1=月曜...の場合
+        // 0=月曜、1=火曜...に変換
+        return (coreDataDay + 6) % 7
+    }
+    
+    /// 平日インデックス(0=月曜, 1=火曜...)からCoreDataの曜日(0=日曜, 1=月曜...)へ変換
+    private func convertWeekdayIndexToCoreDataDay(_ weekdayIndex: Int) -> Int {
+        // 0=月曜、1=火曜...から
+        // CoreDataの0=日曜、1=月曜...に変換
+        return (weekdayIndex + 1) % 7
+    }
+    
     var body: some View {
         NavigationView {
             VStack {
@@ -281,8 +297,10 @@ struct MainView: View {
     
     // 時間割データを取得
     private func fetchTimetable(for day: Int, period: Int16) -> Timetable? {
+        // 新しいインデックス（月曜=0）からCoreDataの形式（日曜=0）に変換
+        let coreDataDay = convertWeekdayIndexToCoreDataDay(day)
         let filtered = timetables.filter { timetable in
-            return timetable.dayOfWeek == day && timetable.period == period
+            return timetable.dayOfWeek == coreDataDay && timetable.period == period
         }
         return filtered.first
     }

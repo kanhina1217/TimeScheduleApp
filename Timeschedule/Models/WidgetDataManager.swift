@@ -11,6 +11,22 @@ class WidgetDataManager {
     
     private init() {}
     
+    // 曜日のインデックス変換メソッド
+    
+    /// CoreDataの曜日(0=日曜, 1=月曜...)からUIの曜日インデックス(0=月曜, 1=火曜...)へ変換
+    func convertCoreDataDayToWeekdayIndex(_ coreDataDay: Int) -> Int {
+        // CoreDataの日付が0=日曜、1=月曜...の場合
+        // 0=月曜、1=火曜...に変換
+        return (coreDataDay + 6) % 7
+    }
+    
+    /// UIの曜日インデックス(0=月曜, 1=火曜...)からCoreDataの曜日(0=日曜, 1=月曜...)へ変換
+    func convertWeekdayIndexToCoreDataDay(_ weekdayIndex: Int) -> Int {
+        // 0=月曜、1=火曜...から
+        // CoreDataの0=日曜、1=月曜...に変換
+        return (weekdayIndex + 1) % 7
+    }
+    
     // 共有UserDefaultsへのアクセスを強化
     private func getSharedUserDefaults() -> UserDefaults? {
         // 明示的にアプリグループIDを指定してUserDefaultsを取得

@@ -7,6 +7,22 @@ class WidgetDataManager {
     // アプリグループ識別子
     private let appGroupIdentifier = "group.com.kanhina.timetable"
     
+    // 曜日のインデックス変換メソッド
+    
+    /// CoreDataの曜日(0=日曜, 1=月曜...)からUIの曜日インデックス(0=月曜, 1=火曜...)へ変換
+    private func convertCoreDataDayToWeekdayIndex(_ coreDataDay: Int) -> Int {
+        // CoreDataの日付が0=日曜、1=月曜...の場合
+        // 0=月曜、1=火曜...に変換
+        return (coreDataDay + 6) % 7
+    }
+    
+    /// UIの曜日インデックス(0=月曜, 1=火曜...)からCoreDataの曜日(0=日曜, 1=月曜...)へ変換
+    private func convertWeekdayIndexToCoreDataDay(_ weekdayIndex: Int) -> Int {
+        // 0=月曜、1=火曜...から
+        // CoreDataの0=日曜、1=月曜...に変換
+        return (weekdayIndex + 1) % 7
+    }
+    
     // 共有UserDefaultsへのアクセスを強化
     private func getSharedUserDefaults() -> UserDefaults? {
         // 明示的にアプリグループIDを指定してUserDefaultsを取得
@@ -22,7 +38,7 @@ class WidgetDataManager {
     
     // 特定の曜日の時間割データを取得する
     func getTimetableForWeekday(_ weekday: Int) throws -> [TimeTableItem] {
-        print("ウィジェット - 曜日 \(weekday) の時間割を取得します")
+        print("ウィジェット - 曜日 \(weekday) の時間割を取得します (CoreData形式)")
         
         // 共有UserDefaultsを取得
         guard let sharedDefaults = getSharedUserDefaults() else {
@@ -48,7 +64,8 @@ class WidgetDataManager {
         
         print("読み込んだデータ件数: \(savedData.count)")
         
-        // 指定された曜日の時間割のみフィルタリング (0=日曜, 1=月曜, 2=火曜...)
+        // 指定された曜日の時間割のみフィルタリング
+        // パラメータweekdayはCoreDataの形式（0=日曜日、1=月曜日...）で渡される
         let filteredItems = savedData.filter { item in
             if let dayOfWeek = item["dayOfWeek"] as? Int {
                 // 曜日が一致するデータのみを取得
@@ -200,16 +217,16 @@ struct TimetableWidgetProvider: TimelineProvider {
             let calendar = Calendar.current
             let today = calendar.component(.weekday, from: Date())
             
-            // 日本の曜日表記に合わせて調整 (0 = 日曜日, 1 = 月曜日, ...)
-            let japaneseWeekday = today - 1
+            // Swiftの曜日(1=日曜, 2=月曜...)からCoreDataの曜日(0=日曜, 1=月曜...)に変換
+            let coreDataWeekday = today - 1
             
-            print("ウィジェット - 現在の曜日: \(today) → 日本式インデックス: \(japaneseWeekday)")
+            print("ウィジェット - 現在の曜日: \(today) → CoreData形式: \(coreDataWeekday)")
             
             // その曜日の時間割を取得
-            let todayItems = try widgetDataManager.getTimetableForWeekday(japaneseWeekday)
+            let todayItems = try widgetDataManager.getTimetableForWeekday(coreDataWeekday)
             
             if todayItems.isEmpty {
-                print("警告: 今日(\(japaneseWeekday))の授業データがありません")
+                print("警告: 今日(\(coreDataWeekday))の授業データがありません")
             } else {
                 print("今日の授業データ: \(todayItems.count)件")
             }
