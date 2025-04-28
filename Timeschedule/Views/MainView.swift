@@ -43,6 +43,7 @@ struct TimetableCellView: View {
         case "blue": return Color.blue.opacity(0.3)
         case "green": return Color.green.opacity(0.3)
         case "yellow": return Color.yellow.opacity(0.3)
+        case "orange": return Color.orange.opacity(0.3)
         case "purple": return Color.purple.opacity(0.3)
         default: return Color(.systemGray6)
         }
