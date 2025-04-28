@@ -40,14 +40,8 @@ struct TimetableWidgetEntryView: View {
     }
     
     var body: some View {
-        let weekday = getWeekday(Date()) // 今日の曜日を取得
-        
-        // 今日の曜日の時間割のみを表示
-        let todayItems = entry.timetableItems.filter { _ in true }
-        
-        // 表示件数の制限
-        let maxItems = family == .systemSmall ? 2 : 5
-        let displayItems = todayItems.prefix(maxItems)
+        // 今日の曜日を取得
+        let weekday = getWeekday(Date())
         
         ZStack {
             // 背景
@@ -63,17 +57,15 @@ struct TimetableWidgetEntryView: View {
                     
                     Spacer()
                     
-                    if !todayItems.isEmpty {
-                        Text("\(todayItems.count)コマ")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
+                    Text("\(entry.timetableItems.count)コマ")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
                 .padding(.bottom, 2)
                 
-                if todayItems.isEmpty {
+                if entry.timetableItems.isEmpty {
                     // 授業がない場合
                     Spacer()
                     VStack(spacing: 8) {
@@ -89,6 +81,10 @@ struct TimetableWidgetEntryView: View {
                     .frame(maxWidth: .infinity)
                     Spacer()
                 } else {
+                    // 表示件数の制限
+                    let maxItems = family == .systemSmall ? 2 : 5
+                    let displayItems = entry.timetableItems.prefix(maxItems)
+                    
                     // 授業カードを表示
                     if family == .systemSmall {
                         // 小サイズは縦に表示

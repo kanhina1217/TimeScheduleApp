@@ -61,8 +61,14 @@ class WidgetDataManager {
         
         print("フィルタリング後のデータ件数: \(filteredItems.count)")
         
+        // 空の場合は早期リターン
+        if filteredItems.isEmpty {
+            print("この曜日のデータはありません")
+            return []
+        }
+        
         // データをTimeTableItem形式に変換
-        return filteredItems.compactMap { item in
+        let items = filteredItems.compactMap { item in
             guard let subjectName = item["subjectName"] as? String,
                   let period = item["period"] as? String else {
                 return nil
@@ -90,10 +96,62 @@ class WidgetDataManager {
             }
             return period1 < period2
         }
+        
+        print("変換後のアイテム数: \(items.count)")
+        return items
+    }
+    
+    // すべての時間割データを取得する（デバッグ用）
+    func getAllTimetableData() -> [TimeTableItem] {
+        guard let sharedDefaults = getSharedUserDefaults(),
+              let savedData = sharedDefaults.array(forKey: "widgetTimetableData") as? [[String: Any]] else {
+            print("ウィジェットデータが見つかりません")
+            return []
+        }
+        
+        print("全データ件数: \(savedData.count)")
+        
+        // すべてのデータを変換（曜日でフィルタリングしない）
+        return savedData.compactMap { item in
+            guard let subjectName = item["subjectName"] as? String,
+                  let period = item["period"] as? String,
+                  let dayOfWeek = item["dayOfWeek"] as? Int else {
+                return nil
+            }
+            
+            // 曜日名を取得
+            let dayNames = ["日", "月", "火", "水", "木", "金", "土"]
+            let dayName = (dayOfWeek >= 0 && dayOfWeek < dayNames.count) ? dayNames[dayOfWeek] : "?"
+            
+            // 授業の開始・終了時間を取得
+            let startTime = item["startTime"] as? String ?? ""
+            let endTime = item["endTime"] as? String ?? ""
+            
+            // 時間帯を「開始-終了」形式に
+            let timeSlot = startTime.isEmpty || endTime.isEmpty ? "" : "\(startTime)-\(endTime)"
+            
+            return TimeTableItem(
+                subject: "\(dayName): \(subjectName)",  // デバッグ用に曜日を追加
+                startTime: timeSlot,
+                teacher: item["teacher"] as? String ?? "",
+                room: item["roomName"] as? String ?? "",
+                period: "\(period)限"
+            )
+        }.sorted { (item1, item2) in
+            // 時限順にソート
+            guard let period1 = Int(item1.period?.replacingOccurrences(of: "限", with: "") ?? "0"),
+                  let period2 = Int(item2.period?.replacingOccurrences(of: "限", with: "") ?? "0") else {
+                return false
+            }
+            return period1 < period2
+        }
     }
 }
 
 struct TimetableWidgetProvider: TimelineProvider {
+    // デバッグモード（問題が発生している場合にtrue）
+    private let debugMode = false
+    
     // プレースホルダーエントリー（ウィジェットがロードされる前に表示される）
     func placeholder(in context: Context) -> TimetableWidgetEntry {
         return TimetableWidgetEntry(date: Date(), timetableItems: [])
@@ -132,6 +190,12 @@ struct TimetableWidgetProvider: TimelineProvider {
             // WidgetDataManagerからデータを取得
             let widgetDataManager = WidgetDataManager()
             
+            // デバッグモードの場合、すべてのデータを表示
+            if debugMode {
+                let allItems = widgetDataManager.getAllTimetableData()
+                return TimetableWidgetEntry(date: Date(), timetableItems: allItems)
+            }
+            
             // 今日の曜日を取得 (1 = 日曜日, 2 = 月曜日, ...)
             let calendar = Calendar.current
             let today = calendar.component(.weekday, from: Date())
@@ -143,6 +207,13 @@ struct TimetableWidgetProvider: TimelineProvider {
             
             // その曜日の時間割を取得
             let todayItems = try widgetDataManager.getTimetableForWeekday(japaneseWeekday)
+            
+            if todayItems.isEmpty {
+                print("警告: 今日(\(japaneseWeekday))の授業データがありません")
+            } else {
+                print("今日の授業データ: \(todayItems.count)件")
+            }
+            
             return TimetableWidgetEntry(date: Date(), timetableItems: todayItems)
         } catch {
             print("ウィジェットデータの取得中にエラーが発生: \(error.localizedDescription)")
