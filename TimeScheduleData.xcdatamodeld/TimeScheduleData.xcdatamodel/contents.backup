@@ -13,16 +13,6 @@
         <attribute name="periodTimes" optional="YES" attributeType="Transformable" valueTransformerName="PeriodTimesValueTransformer"/>
         <relationship name="timetables" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Timetable" inverseName="pattern" inverseEntity="Timetable"/>
     </entity>
-    <entity name="SpecialSchedule" representedClassName="SpecialSchedule" syncable="YES" codeGenerationType="class">
-        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
-        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="originalDay" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="originalPeriod" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="targetDay" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="targetPeriod" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="patternName" optional="YES" attributeType="String"/>
-        <attribute name="notes" optional="YES" attributeType="String"/>
-    </entity>
     <entity name="Subject" representedClassName="Subject" syncable="YES" codeGenerationType="class">
         <attribute name="color" optional="YES" attributeType="String"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
@@ -46,7 +36,6 @@
         <attribute name="color" optional="YES" attributeType="String"/>
         <attribute name="dayOfWeek" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="isSpecial" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="period" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="subjectName" optional="YES" attributeType="String"/>
         <attribute name="task" optional="YES" attributeType="String"/>

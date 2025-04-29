@@ -28,69 +28,112 @@ struct TimetableCellView: View {
             .frame(maxWidth: .infinity, minHeight: 60)
             .background(getCellColor(for: timetable))
             .cornerRadius(8)
+            .overlay(
+                // 特殊時程のセルには特別な枠線を表示
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(getStrokeColor(for: timetable), lineWidth: 2)
+            )
         }
     }
     
     // セルの背景色を取得
     private func getCellColor(for timetable: Timetable?) -> Color {
-        guard let timetable = timetable, let colorName = timetable.color, let subjectName = timetable.subjectName, !subjectName.isEmpty else {
-            return Color(.systemGray6)  // データがない場合のデフォルト色
+        guard let timetable = timetable, let colorName = timetable.color else {
+            return Color(.systemGray6)  // デフォルトの背景色
         }
         
-        // 色名に基づいて色を返す
-        switch colorName {
+        // 特殊時程のセルには枠線を付ける
+        let baseColor = getColorFromName(colorName)
+        
+        if timetable.isSpecial {
+            return baseColor.opacity(0.8)  // 特殊時程は少し不透明度を下げる
+        }
+        
+        return baseColor
+    }
+    
+    // 枠線の色を取得（特殊時程の場合のみ表示）
+    private func getStrokeColor(for timetable: Timetable?) -> Color {
+        guard let timetable = timetable, timetable.isSpecial else {
+            return Color.clear // 通常のセルは枠線なし
+        }
+        
+        return Color.orange.opacity(0.8) // 特殊時程のセルは目立つ枠線
+    }
+    
+    // 色名からカラーを取得
+    private func getColorFromName(_ name: String) -> Color {
+        switch name {
         case "red": return Color.red.opacity(0.3)
         case "blue": return Color.blue.opacity(0.3)
         case "green": return Color.green.opacity(0.3)
         case "yellow": return Color.yellow.opacity(0.3)
         case "orange": return Color.orange.opacity(0.3)
         case "purple": return Color.purple.opacity(0.3)
-        default: return Color(.systemGray6)
+        default: return Color.gray.opacity(0.3)
         }
     }
 }
 
-// 時間情報表示コンポーネント
+// 時限情報を表示するコンポーネント
 struct PeriodInfoView: View {
     let period: Int
     let pattern: Pattern?
     
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(alignment: .leading) {
             Text("\(period)")
                 .font(.headline)
-                .frame(width: 50)
+                .foregroundColor(.primary)
             
-            if let pattern = pattern {
-                let startTime = pattern.startTimeForPeriod(period)
-                Text(startTime)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                let endTime = pattern.endTimeForPeriod(period)
-                Text(endTime)
+            if let startTime = getStartTime(), let endTime = getEndTime() {
+                Text("\(startTime)\n-\(endTime)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
         }
         .frame(width: 50)
     }
+    
+    // 開始時刻を取得
+    private func getStartTime() -> String? {
+        guard let pattern = pattern,
+              let periodTimes = pattern.periodTimes as? [[String: String]],
+              period <= periodTimes.count else {
+            return nil
+        }
+        
+        return periodTimes[period - 1]["startTime"]
+    }
+    
+    // 終了時刻を取得
+    private func getEndTime() -> String? {
+        guard let pattern = pattern,
+              let periodTimes = pattern.periodTimes as? [[String: String]],
+              period <= periodTimes.count else {
+            return nil
+        }
+        
+        return periodTimes[period - 1]["endTime"]
+    }
 }
 
-// パターン選択コンポーネント
+// パターン選択ビュー
 struct PatternPickerView: View {
     @Binding var selectedPattern: Pattern?
-    let patterns: FetchedResults<Pattern>
+    let items: [PatternItem]
+    
+    struct PatternItem: Identifiable {
+        let id: UUID
+        let name: String
+        let pattern: Pattern
+    }
     
     var body: some View {
-        Group {
-            if patterns.isEmpty {
-                EmptyView()
-            } else {
-                // 明示的な型で中間データを作成
-                let items: [(id: UUID, pattern: Pattern, name: String)] = patterns.map { pattern in
-                    (id: pattern.id ?? UUID(), pattern: pattern, name: pattern.name ?? "不明")
-                }
+        if !items.isEmpty {
+            VStack {
+                Text("時程パターン")
+                    .font(.headline)
                 
                 Picker("パターン", selection: $selectedPattern) {
                     ForEach(items, id: \.id) { item in
@@ -135,6 +178,12 @@ struct MainView: View {
     @State private var selectedDay = 0
     @State private var selectedPeriod = 1
     @State private var selectedTimetable: Timetable?
+    @State private var selectedDate = Date() // 表示する日付
+    @State private var isDatePickerVisible = false // 日付選択の表示状態
+    @State private var isSpecialScheduleActive = false // 特殊時程設定画面への遷移状態
+    @State private var showingCalendarAlert = false // カレンダー連携のアラート
+    @State private var specialTimetables: [NSManagedObject] = [] // 特殊時程のデータ
+    @State private var isSpecialMode = false // 特殊時程表示モード
     
     // 曜日と時限
     private let daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"]
@@ -159,47 +208,132 @@ struct MainView: View {
     var body: some View {
         NavigationView {
             VStack {
-                // パターン選択コンポーネント
-                PatternPickerView(selectedPattern: $selectedPattern, patterns: patterns)
-                
-                // タブ切り替えボタン
-                HStack {
-                    NavigationLink(destination: TaskManagementView()) {
-                        HStack {
-                            Image(systemName: "checklist")
-                            Text("課題管理")
-                        }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(8)
-                    }
-                    Spacer()
+                // パターン選択ビュー
+                let patternItems = patterns.map { pattern in
+                    PatternPickerView.PatternItem(
+                        id: pattern.id ?? UUID(),
+                        name: pattern.name ?? "不明なパターン",
+                        pattern: pattern
+                    )
                 }
-                .padding(.horizontal)
                 
-                // 時間割表示
+                PatternPickerView(selectedPattern: $selectedPattern, items: patternItems)
+                
+                // 日付が選択されている場合は表示
+                if selectedDate != Date.distantPast {
+                    HStack {
+                        // 日付表示
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateStyle = .medium
+                        dateFormatter.timeStyle = .none
+                        dateFormatter.locale = Locale(identifier: "ja_JP")
+                        
+                        Button(action: {
+                            isDatePickerVisible.toggle()
+                        }) {
+                            HStack {
+                                Image(systemName: "calendar")
+                                Text("\(dateFormatter.string(from: selectedDate))")
+                            }
+                            .padding(8)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+                        
+                        Spacer()
+                        
+                        // 特殊時程が適用されているかチェック
+                        if isSpecialScheduleApplied(for: selectedDate) {
+                            HStack {
+                                Label("特殊時程適用中", systemImage: "star.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                                    .padding(5)
+                                    .background(Color.orange.opacity(0.1))
+                                    .cornerRadius(5)
+                                
+                                // 特殊時程表示モードの切り替えスイッチ
+                                Toggle("", isOn: $isSpecialMode)
+                                    .labelsHidden()
+                                    .onChange(of: isSpecialMode) { _, newValue in
+                                        // モード切替時に時間割を再読み込み
+                                        loadTimetableForDate(selectedDate)
+                                    }
+                            }
+                        }
+                        
+                        // 今日の日付に戻るボタン
+                        Button(action: {
+                            selectedDate = Date()
+                            loadTimetableForDate(selectedDate)
+                        }) {
+                            Text("今日")
+                                .padding(8)
+                                .background(Color.blue.opacity(0.2))
+                                .cornerRadius(8)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                
+                // 日付ピッカー（表示/非表示切り替え可能）
+                if isDatePickerVisible {
+                    DatePicker(
+                        "日付を選択",
+                        selection: $selectedDate,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(GraphicalDatePickerStyle())
+                    .padding()
+                    .onChange(of: selectedDate) { _, newValue in
+                        loadTimetableForDate(newValue)
+                    }
+                }
+                
+                // 時間割グリッド
                 timetableGridView
                 
                 Spacer()
             }
             .navigationTitle("時間割")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     NavigationLink(destination: PatternSettingsView()) {
-                        Image(systemName: "gear")
+                        Label("時程設定", systemImage: "clock")
                     }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showingAddSheet = true
-                    }) {
-                        Image(systemName: "plus")
+                    Menu {
+                        Button(action: {
+                            showingAddSheet = true
+                        }) {
+                            Label("コマを追加", systemImage: "plus")
+                        }
+                        
+                        // タスク管理へのリンク
+                        NavigationLink(destination: TaskManagementView()) {
+                            Label("課題管理", systemImage: "list.bullet.clipboard")
+                        }
+                        
+                        // 特殊時程設定へのリンク
+                        NavigationLink(destination: SpecialScheduleView(), isActive: $isSpecialScheduleActive) {
+                            Label("特殊時程設定", systemImage: "calendar.badge.clock")
+                        }
+                        
+                        // カレンダーから時程を読み込む
+                        Button(action: loadScheduleFromCalendar) {
+                            Label("カレンダーから時程を読み込む", systemImage: "arrow.clockwise.circle")
+                        }
+                    } label: {
+                        Label("メニュー", systemImage: "ellipsis.circle")
                     }
                 }
             }
-            .onAppear { loadDefaultPattern() }
+            .onAppear { 
+                loadDefaultPattern()
+                loadTimetableForDate(selectedDate)
+            }
             // FetchedResultsはEquatableに準拠していないため、.onChangeは使用できない
             // 代わりにonReceiveメソッドを使用するか、FetchRequestの.onChangeを使用する
             .onChange(of: selectedPattern) { _, _ in
@@ -224,6 +358,19 @@ struct MainView: View {
                         .environment(\.managedObjectContext, viewContext)
                 }
             }
+            .alert("カレンダーから時程を読み込みますか？", isPresented: $showingCalendarAlert) {
+                Button("キャンセル", role: .cancel) { }
+                Button("読み込む") {
+                    loadScheduleFromCalendar()
+                }
+            } message: {
+                Text("カレンダーから特殊時程の情報を読み込み、今日の表示に適用します。")
+            }
+        }
+        .onAppear {
+            // 初期表示時に今日の時間割を表示
+            selectedDate = Date()
+            loadTimetableForDate(selectedDate)
         }
     }
     
@@ -263,7 +410,7 @@ struct MainView: View {
                 
                 // 曜日ごとのセル
                 ForEach(0..<5, id: \.self) { dayIndex in
-                    let timetable = fetchTimetable(for: dayIndex, period: Int16(period))
+                    let timetable = getTimetableForCell(dayIndex: dayIndex, period: Int16(period))
                     TimetableCellView(timetable: timetable) {
                         selectedDay = dayIndex
                         selectedPeriod = period
@@ -275,6 +422,29 @@ struct MainView: View {
             .padding(.horizontal)
         }
         .padding(.vertical, 4)
+    }
+    
+    // セル用の時間割データを取得（通常or特殊）
+    private func getTimetableForCell(dayIndex: Int, period: Int16) -> Timetable? {
+        if isSpecialMode && !specialTimetables.isEmpty {
+            // 特殊時程データから該当するコマを探す
+            let coreDataDay = convertWeekdayIndexToCoreDataDay(dayIndex)
+            
+            // 特殊時程のデータから該当するコマを探す
+            for specialData in specialTimetables {
+                if let day = specialData.value(forKey: "dayOfWeek") as? Int16,
+                   let p = specialData.value(forKey: "period") as? Int16,
+                   day == coreDataDay && p == period {
+                    
+                    // NSManagedObjectをTimetableにキャスト
+                    return specialData as? Timetable
+                }
+            }
+            return nil
+        } else {
+            // 通常の時間割データを取得
+            return fetchTimetable(for: dayIndex, period: period)
+        }
     }
     
     // デフォルトパターンの読み込み
@@ -298,7 +468,7 @@ struct MainView: View {
     
     // 時間割データを取得
     private func fetchTimetable(for day: Int, period: Int16) -> Timetable? {
-        // 新しいインデックス（月曜=0）からCoreDataの形式（日曜=0）に変換
+        // 新しいインデックス（月曜=0）からCoreData形式（日曜=0）に変換
         let coreDataDay = convertWeekdayIndexToCoreDataDay(day)
         let filtered = timetables.filter { timetable in
             return timetable.dayOfWeek == coreDataDay && timetable.period == period
@@ -310,11 +480,87 @@ struct MainView: View {
     private func updateWidgetData() {
         WidgetDataManager.shared.exportDataForWidget(context: viewContext)
     }
+    
+    // 特定の日付に特殊時程が適用されているかチェック
+    private func isSpecialScheduleApplied(for date: Date) -> Bool {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "SpecialSchedule")
+        fetchRequest.predicate = NSPredicate(format: "date == %@", startOfDay as NSDate)
+        fetchRequest.fetchLimit = 1
+        
+        do {
+            let results = try viewContext.fetch(fetchRequest)
+            return !results.isEmpty
+        } catch {
+            print("特殊時程データの確認に失敗しました: \(error)")
+            return false
+        }
+    }
+    
+    // 選択した日付の時間割を読み込む
+    private func loadTimetableForDate(_ date: Date) {
+        // 特殊時程が適用されており、かつ特殊モードが有効な場合
+        if isSpecialScheduleApplied(for: date) && isSpecialMode {
+            // 特殊時程データに基づいて表示
+            print("特殊時程が適用されているため、その内容を表示します")
+            
+            // 特殊時程データを取得
+            specialTimetables = SpecialScheduleManager.shared.getTimetableDataForSpecialSchedule(date: date, context: viewContext)
+            
+            // 特殊時程フラグをオンに
+            for (i, obj) in specialTimetables.enumerated() {
+                if let timetable = obj as? Timetable {
+                    timetable.isSpecial = true
+                    specialTimetables[i] = timetable
+                }
+            }
+        } else {
+            // 通常時程または特殊時程が無効な場合
+            print("通常の時間割を表示します")
+            specialTimetables = []
+            
+            // 日付に対応する曜日を取得
+            let calendar = Calendar.current
+            let weekday = calendar.component(.weekday, from: date) - 1 // 0=日曜日
+            selectedDay = (weekday + 6) % 7 // 日本式 0=月曜日
+        }
+    }
+    
+    // カレンダーから特殊時程を読み込む
+    private func loadScheduleFromCalendar() {
+        let today = Date()
+        
+        // カレンダーからイベントを取得
+        let events = CalendarManager.shared.fetchEvents(for: today)
+        
+        // 時程パターンを示すイベントを探す
+        for event in events {
+            if CalendarManager.shared.isScheduleEvent(event),
+               let pattern = CalendarManager.shared.extractSchedulePattern(from: event) {
+                // 特殊時程があれば適用
+                let result = SpecialScheduleManager.shared.applySpecialSchedule(for: today, context: viewContext)
+                
+                if result {
+                    // 特殊時程モードを有効にする
+                    isSpecialMode = true
+                }
+                
+                // UIを更新
+                selectedDate = today
+                loadTimetableForDate(today)
+                return
+            }
+        }
+        
+        // 特殊時程が見つからなかった場合
+        print("今日の特殊時程は見つかりませんでした")
+    }
 }
 
 struct MainView_Previews: PreviewProvider {
     static var previews: some View {
-        MainView()
-            .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+        MainView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
     }
 }
