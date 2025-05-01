@@ -49,7 +49,7 @@ struct TimescheduleApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainView()
+            TabBarView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
         }
     }
