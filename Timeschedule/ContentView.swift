@@ -6,12 +6,15 @@
 //
 
 import SwiftUI
+import EventKit
+import CoreData
 
 struct ContentView: View {
     @State private var showingContinueAlert = false
     @State private var isProcessing = false
     @State private var processingMessage = ""
     @State private var calendarAccessGranted = false
+    @State private var selectedPattern: NSManagedObject? = nil
     
     var body: some View {
         NavigationView {
@@ -62,7 +65,17 @@ struct ContentView: View {
                         }
                         .disabled(!calendarAccessGranted)
                         
-                        NavigationLink(destination: TimetableDetailView()) {
+                        // デフォルトのパターンを取得して渡す
+                        NavigationLink(destination: {
+                            if let pattern = selectedPattern {
+                                TimetableDetailView(pattern: pattern)
+                            } else {
+                                Text("パターンを読み込み中...")
+                                    .onAppear {
+                                        loadDefaultPattern()
+                                    }
+                            }
+                        }) {
                             HStack {
                                 Image(systemName: "list.bullet.clipboard")
                                 Text("時程表を確認")
@@ -79,6 +92,7 @@ struct ContentView: View {
             .padding()
             .onAppear {
                 checkCalendarAuthorizationStatus()
+                loadDefaultPattern()
             }
             .alert("反復処理を続行しますか?", isPresented: $showingContinueAlert) {
                 Button("キャンセル", role: .cancel) { }
@@ -91,9 +105,29 @@ struct ContentView: View {
         }
     }
     
+    // デフォルトのパターンを読み込む
+    private func loadDefaultPattern() {
+        let context = PersistenceController.shared.container.viewContext
+        let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "Pattern")
+        fetchRequest.predicate = NSPredicate(format: "isDefault == YES")
+        fetchRequest.fetchLimit = 1
+        
+        do {
+            let results = try context.fetch(fetchRequest)
+            if let pattern = results.first {
+                selectedPattern = pattern
+            } else {
+                // デフォルトパターンがない場合は新規作成する処理を実装
+                print("デフォルトパターンが見つかりません")
+            }
+        } catch {
+            print("パターンの読み込みに失敗: \(error)")
+        }
+    }
+    
     // カレンダー認証状態の確認
     private func checkCalendarAuthorizationStatus() {
-        let status = CalendarManager.shared.authorizationStatus
+        let status = EKEventStore.authorizationStatus(for: .event)
         calendarAccessGranted = (status == .authorized || status == .fullAccess)
     }
     
@@ -102,6 +136,7 @@ struct ContentView: View {
         isProcessing = true
         processingMessage = "カレンダーアクセスをリクエスト中..."
         
+        // 引数名を指定せずにトレーリングクロージャを使用
         CalendarManager.shared.requestAccess { granted, error in
             isProcessing = false
             
@@ -127,16 +162,17 @@ struct ContentView: View {
         let today = Date()
         
         // カレンダーからその日のイベントを取得
+        // コールバック形式に変更
         CalendarManager.shared.fetchEvents(for: today) { events, error in
             if let error = error {
-                isProcessing = false
-                processingMessage = "エラー: \(error.localizedDescription)"
+                self.isProcessing = false
+                self.processingMessage = "エラー: \(error.localizedDescription)"
                 return
             }
             
             guard let events = events else {
-                isProcessing = false
-                processingMessage = "イベントの取得に失敗しました"
+                self.isProcessing = false
+                self.processingMessage = "イベントの取得に失敗しました"
                 return
             }
             
@@ -153,23 +189,22 @@ struct ContentView: View {
             
             // 時程パターンに基づいて処理
             if let pattern = schedulePattern {
-                processingMessage = "時程パターン「\(pattern)」を適用中..."
+                self.processingMessage = "時程パターン「\(pattern)」を適用中..."
                 // ここで実際の時程パターン適用処理を実装
                 // 例: applySchedulePattern(pattern)
                 
                 // 処理完了（実際の実装ではこの部分に時程パターン適用のロジックを入れる）
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    isProcessing = false
-                    processingMessage = ""
+                    self.isProcessing = false
+                    self.processingMessage = ""
                 }
             } else {
-                // 時程パターンが見つからない場合はデフォルト処理
-                processingMessage = "デフォルトの時程を適用中..."
+                self.processingMessage = "デフォルトの時程を適用中..."
                 
                 // 処理完了（実際の実装ではこの部分にデフォルトパターン適用のロジックを入れる）
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    isProcessing = false
-                    processingMessage = ""
+                    self.isProcessing = false
+                    self.processingMessage = ""
                 }
             }
         }
@@ -178,4 +213,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
 }

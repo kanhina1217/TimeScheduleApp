@@ -449,11 +449,10 @@ class SpecialScheduleManager {
         let specialTimetable = NSManagedObject(entity: entity, insertInto: nil) // コンテキストには追加しない
         
         // 元のデータの属性をコピー
-        if let attributes = entity.attributesByName {
-            for (name, _) in attributes {
-                if let value = original.value(forKey: name) {
-                    specialTimetable.setValue(value, forKey: name)
-                }
+        let attributes = entity.attributesByName
+        for (name, _) in attributes {
+            if let value = original.value(forKey: name) {
+                specialTimetable.setValue(value, forKey: name)
             }
         }
         
