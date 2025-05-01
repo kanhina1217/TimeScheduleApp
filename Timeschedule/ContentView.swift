@@ -9,7 +9,7 @@ import SwiftUI
 import EventKit
 import CoreData
 
-struct ContentView: View {
+struct MainView: View {
     @State private var showingContinueAlert = false
     @State private var isProcessing = false
     @State private var processingMessage = ""
@@ -211,7 +211,30 @@ struct ContentView: View {
     }
 }
 
-#Preview {
-    ContentView()
-        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+struct SpecialScheduleView: View {
+    var body: some View {
+        Text("カレンダー画面")
+    }
+}
+
+struct ContentView: View {
+    var body: some View {
+        TabView {
+            MainView()
+                .tabItem {
+                    Label("時間割", systemImage: "calendar")
+                }
+
+            SpecialScheduleView()
+                .tabItem {
+                    Label("カレンダー", systemImage: "calendar.badge.clock")
+                }
+        }
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
 }
