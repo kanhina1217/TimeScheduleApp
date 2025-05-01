@@ -585,9 +585,8 @@ struct MainView: View {
         )
     }
 
-    // ナビゲーション関連のモディファイアをまとめて適用するメソッド
-    private func applyNavigationModifiers<T: View>(to view: T) -> some View {
-        view
+    var body: some View {
+        contentStackView
             .navigationTitle("時間割")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -604,10 +603,10 @@ struct MainView: View {
                         NavigationLink(destination: TaskManagementView()) {
                             Label("課題管理", systemImage: "list.bullet.clipboard")
                         }
-                        NavigationLink(destination: SpecialScheduleView(), isActive: $isSpecialScheduleActive) {
+                        NavigationLink(destination: SpecialScheduleView()) {
                             Label("特殊時程設定", systemImage: "calendar.badge.clock")
                         }
-                        Button(action: loadScheduleFromCalendar) {
+                        Button(action: { showingCalendarAlert = true }) {
                             Label("カレンダーから時程を読み込む", systemImage: "arrow.clockwise.circle")
                         }
                     } label: {
@@ -615,11 +614,6 @@ struct MainView: View {
                     }
                 }
             }
-    }
-
-    // イベントハンドラ関連のモディファイアをまとめて適用するメソッド
-    private func applyEventHandlerModifiers<T: View>(to view: T) -> some View {
-        view
             .onAppear {
                 loadDefaultPattern()
                 selectedDate = Date()
@@ -629,11 +623,6 @@ struct MainView: View {
                 updateWidgetData()
                 saveSelectedPatternID()
             }
-    }
-    
-    // シートとアラート関連のモディファイアをまとめて適用するメソッド
-    private func applySheetAndAlertModifiers<T: View>(to view: T) -> some View {
-        view
             .sheet(isPresented: $showingDetailSheet) {
                 detailSheetContent()
             }
@@ -643,17 +632,6 @@ struct MainView: View {
             .alert(isPresented: $showingCalendarAlert) {
                 calendarAlert
             }
-    }
-
-    var body: some View {
-        let navigationStack = NavigationStack {
-            contentStackView
-        }
-        
-        let viewWithNavigation = applyNavigationModifiers(to: navigationStack)
-        let viewWithEvents = applyEventHandlerModifiers(to: viewWithNavigation)
-        
-        return applySheetAndAlertModifiers(to: viewWithEvents)
     }
 }
 
