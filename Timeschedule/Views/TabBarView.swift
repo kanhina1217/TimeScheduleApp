@@ -3,22 +3,36 @@ import CoreData
 
 struct TabBarView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @State private var selectedTab = 0
     
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             // 時間割タブ
-            MainView()
-                .environment(\.managedObjectContext, viewContext)
-                .tabItem {
-                    Label("時間割", systemImage: "calendar")
-                }
+            NavigationView {
+                MainView()
+                    .environment(\.managedObjectContext, viewContext)
+            }
+            .tabItem {
+                Label("時間割", systemImage: "calendar")
+            }
+            .tag(0)
             
             // カレンダータブ（特殊時程設定）
-            SpecialScheduleView()
-                .environment(\.managedObjectContext, viewContext)
-                .tabItem {
-                    Label("カレンダー", systemImage: "calendar.badge.clock")
-                }
+            NavigationView {
+                SpecialScheduleView()
+                    .environment(\.managedObjectContext, viewContext)
+            }
+            .tabItem {
+                Label("カレンダー", systemImage: "calendar.badge.clock")
+            }
+            .tag(1)
+        }
+        .onAppear {
+            // タブバーの背景色を設定（iOS 15以降）
+            let appearance = UITabBarAppearance()
+            appearance.configureWithOpaqueBackground()
+            UITabBar.appearance().scrollEdgeAppearance = appearance
+            UITabBar.appearance().standardAppearance = appearance
         }
     }
 }
