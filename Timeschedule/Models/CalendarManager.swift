@@ -33,22 +33,19 @@ class CalendarManager {
     func requestAccess(completion: @escaping (Bool, Error?) -> Void) {
         // iOS 17以降と以前で異なる処理
         if #available(iOS 17.0, *) {
-            // 非同期APIを使用するための標準的なアプローチ
-            DispatchQueue.global().async {
-                do {
-                    // Use requestFullAccessToEvents for iOS 17+
-                    let granted = try self.eventStore.requestFullAccessToEvents()
-                    DispatchQueue.main.async {
-                        self.hasAccess = granted
-                        completion(granted, nil)
-                    }
-                } catch {
-                    DispatchQueue.main.async {
-                        self.hasAccess = false
-                        completion(false, error)
-                    }
+            // Swift Concurrencyを使わない代替アプローチ
+            // 非同期関数をラップして同期的に呼び出す
+            let handler: EKEventStoreRequestAccessCompletionHandler = { granted, error in
+                DispatchQueue.main.async {
+                    self.hasAccess = granted
+                    completion(granted, error)
                 }
             }
+            
+            // EKEventStoreのprivateメソッドにアクセスすることはできませんが、
+            // iOS 17では従来のrequestAccess(to:completion:)メソッドが内部的に
+            // 新しいAPIを呼び出すようになっているので、それを使います
+            eventStore.requestAccess(to: .event, completion: handler)
         } else {
             // Use requestAccess for older iOS versions
             eventStore.requestAccess(to: .event) { [weak self] granted, error in
