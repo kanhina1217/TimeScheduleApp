@@ -147,7 +147,10 @@ struct TodayScheduleCard: View {
                 } else {
                     // 通常時程の場合
                     if let timetable = findTimetable(forPeriod: period) {
-                        TimetableRow(timetable: timetable)
+                        TimetableRowWithPattern(
+                            timetable: timetable,
+                            pattern: basePattern ?? timetable.pattern
+                        )
                     } else {
                         EmptyTimetableRow(
                             period: period,
@@ -327,6 +330,72 @@ struct TimetableRowWithOriginalInfo: View {
             VStack(alignment: .leading) {
                 // 科目名と元の時程情報を表示
                 Text((timetable.subjectName ?? "未設定") + (originalInfo ?? ""))
+                    .fontWeight(.medium)
+                
+                if let classroom = timetable.classroom, !classroom.isEmpty {
+                    Text(classroom)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.leading, 8)
+            
+            Spacer()
+            
+            // 教科の色
+            Circle()
+                .fill(timetable.displayColor)
+                .frame(width: 12, height: 12)
+                .padding(.trailing, 4)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal)
+        .background(Color(UIColor.systemBackground))
+        .cornerRadius(8)
+        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .padding(.horizontal)
+    }
+}
+
+// 時間割の行（通常時程、パターン指定）
+struct TimetableRowWithPattern: View {
+    let timetable: Timetable
+    let pattern: Pattern?
+    
+    var body: some View {
+        HStack(alignment: .center) {
+            // 時限
+            Text("\(timetable.period)限")
+                .font(.headline)
+                .frame(width: 40)
+            
+            // 時間（指定されたパターンから取得）
+            if let pattern = pattern {
+                VStack(alignment: .center) {
+                    Text(pattern.startTimeForPeriod(Int(timetable.period)))
+                        .font(.caption)
+                    Text("〜")
+                        .font(.system(size: 8))
+                        .foregroundColor(.secondary)
+                    Text(pattern.endTimeForPeriod(Int(timetable.period)))
+                        .font(.caption)
+                }
+                .frame(width: 60)
+            } else {
+                Text("--:-- - --:--")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .frame(width: 60)
+            }
+            
+            // 縦線
+            Rectangle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 1, height: 36)
+            
+            // 教科情報
+            VStack(alignment: .leading) {
+                Text(timetable.subjectName ?? "未設定")
                     .fontWeight(.medium)
                 
                 if let classroom = timetable.classroom, !classroom.isEmpty {
