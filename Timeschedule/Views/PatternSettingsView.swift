@@ -35,9 +35,6 @@ struct PatternSettingsView: View {
                             Text("\(pattern.periodCount)時限")
                                 .font(.subheadline)
                                 .foregroundColor(.gray)
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.gray)
-                                .font(.caption)
                         }
                     }
                 }
@@ -174,10 +171,19 @@ struct PatternDetailView: View {
     
     // 新しい時限を追加
     private func addPeriod() {
-        let newIndex = startTimes.count + 1
-        let now = Date()
-        startTimes.append(Calendar.current.date(bySettingHour: Calendar.current.component(.hour, from: now), minute: 0, second: 0, of: now) ?? now)
-        endTimes.append(Calendar.current.date(bySettingHour: Calendar.current.component(.hour, from: now) + 1, minute: 0, second: 0, of: now) ?? now)
+        if let lastEnd = endTimes.last {
+            let newStart = lastEnd.addingTimeInterval(10 * 60)
+            let newEnd = newStart.addingTimeInterval(50 * 60)
+            startTimes.append(newStart)
+            endTimes.append(newEnd)
+        } else {
+            // デフォルトフォールバック：現在時刻から1時間
+            let now = Date()
+            let newStart = now
+            let newEnd = now.addingTimeInterval(50 * 60)
+            startTimes.append(newStart)
+            endTimes.append(newEnd)
+        }
     }
     
     // 時限を削除
@@ -188,24 +194,22 @@ struct PatternDetailView: View {
     
     // パターンデータの読み込み
     private func loadPatternData() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "H:mm"
         if let pattern = existingPattern {
+            // 既存パターン編集時
             patternName = pattern.name ?? ""
             isDefault = pattern.isDefault
-            
-            // periodTimesデータを正しく取得
-            if let times = pattern.periodTimes as? [[String: String]] {
-                periodTimes = times
+            let times: [[String: String]]
+            if let t = pattern.periodTimes as? [[String: String]] {
+                times = t
             } else {
-                // periodTimeArrayは非オプショナルなので直接使用
-                let times = pattern.periodTimeArray
-                if !times.isEmpty {
-                    periodTimes = times
-                }
+                times = pattern.periodTimeArray
             }
-            
-            // DatePicker用のDate配列を初期化
-            let formatter = DateFormatter()
-            formatter.dateFormat = "H:mm"
+            startTimes = times.compactMap { formatter.date(from: $0["startTime"] ?? "") }
+            endTimes = times.compactMap { formatter.date(from: $0["endTime"] ?? "") }
+        } else {
+            // 新規作成時：デフォルト設定を読み込む
             startTimes = periodTimes.compactMap { formatter.date(from: $0["startTime"] ?? "") }
             endTimes = periodTimes.compactMap { formatter.date(from: $0["endTime"] ?? "") }
         }
