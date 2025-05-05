@@ -63,7 +63,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		5F68698F2DB632A700C61387 /* Exceptions for "TimetableWidiget" folder in "TimetableWidigetExtension" target */ = {
+		5F7E6CBE2DC8CCF000B05D96 /* Exceptions for "Timeschedule" folder in "Timeschedule" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 5F5C00712DB129E200B36824 /* Timeschedule */;
+		};
+		5F7E6CC12DC8CE3900B05D96 /* Exceptions for "TimetableWidiget" folder in "TimetableWidigetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -75,6 +82,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5F5C00742DB129E200B36824 /* Timeschedule */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5F7E6CBE2DC8CCF000B05D96 /* Exceptions for "Timeschedule" folder in "Timeschedule" target */,
+			);
 			path = Timeschedule;
 			sourceTree = "<group>";
 		};
@@ -91,7 +101,7 @@
 		5F68697E2DB632A500C61387 /* TimetableWidiget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				5F68698F2DB632A700C61387 /* Exceptions for "TimetableWidiget" folder in "TimetableWidigetExtension" target */,
+				5F7E6CC12DC8CE3900B05D96 /* Exceptions for "TimetableWidiget" folder in "TimetableWidigetExtension" target */,
 			);
 			path = TimetableWidiget;
 			sourceTree = "<group>";
@@ -521,6 +531,7 @@
 				DEVELOPMENT_TEAM = 724B95MF6D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Timeschedule/Info.plist;
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "特殊時程の設定のためにカレンダーへのアクセス権限が必要です";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -536,7 +547,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -551,6 +562,7 @@
 				DEVELOPMENT_TEAM = 724B95MF6D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Timeschedule/Info.plist;
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "特殊時程の設定のためにカレンダーへのアクセス権限が必要です";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -566,7 +578,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
