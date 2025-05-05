@@ -88,26 +88,16 @@ class CalendarManager {
 
     // イベントから特殊時程パターン名を抽出
     func extractSchedulePattern(from event: EKEvent) -> String? {
-        // イベントのタイトルからパターン名を抽出
-        let patterns = ["通常", "短縮A時程", "短縮B時程", "短縮C時程", "テスト時程"]
-
-        for pattern in patterns {
-            if event.title.contains(pattern) {
-                return pattern
-            }
-        }
-
-        // カスタム設定の場合
-        if event.title.contains("→") || event.notes?.contains("→") ?? false {
-            return event.title // または詳細な解析ロジック
-        }
-
-        // タイトルからプレフィックスを除去する例
+        // イベントタイトルをそのまま利用
+        var patternName = event.title
+        
+        // 特殊時程プレフィックスを除去
         if event.title.starts(with: specialScheduleEventTitle + ": ") {
-            return String(event.title.dropFirst((specialScheduleEventTitle + ": ").count))
+            patternName = String(event.title.dropFirst((specialScheduleEventTitle + ": ").count))
         }
-
-        return nil // マッチしない場合
+        
+        // イベントのタイトルをパターン名としてそのまま返す
+        return patternName
     }
 
     // 特定日の特殊時程を取得
