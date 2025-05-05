@@ -325,3 +325,141 @@ class CalendarManager {
         }
     }
 }
+
+// MARK: - ウィジェット連携
+extension CalendarManager {
+    /// ウィジェット用に時間割データをエクスポートする
+    func exportTimetableDataForWidget() {
+        // アプリグループ識別子
+        let appGroupIdentifier = "group.com.kanhina.timetable"
+        
+        // 共有UserDefaultsを取得
+        guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
+            print("エラー: 共有UserDefaultsを取得できません")
+            return
+        }
+        
+        // 現在のコンテキストを取得
+        let context = PersistenceController.shared.container.viewContext
+        
+        // 時間割データをフェッチ
+        let fetchRequest: NSFetchRequest<Timetable> = Timetable.fetchRequest()
+        
+        do {
+            // 時間割データを取得
+            let timetables = try context.fetch(fetchRequest)
+            
+            // エクスポート用の辞書の配列を作成
+            var exportData: [[String: Any]] = []
+            
+            for timetable in timetables {
+                let dayOfWeek = Int(timetable.dayOfWeek)
+                let period = timetable.period ?? ""
+                let subjectName = timetable.subject?.name ?? "未設定"
+                let roomName = timetable.room?.name ?? ""
+                let teacher = timetable.teacher?.name ?? ""
+                let startTime = timetable.startTime ?? ""
+                let endTime = timetable.endTime ?? ""
+                let color = timetable.subject?.color ?? "0"
+                
+                var timetableData: [String: Any] = [
+                    "dayOfWeek": dayOfWeek,
+                    "period": period,
+                    "subjectName": subjectName,
+                    "roomName": roomName,
+                    "teacher": teacher,
+                    "startTime": startTime,
+                    "endTime": endTime,
+                    "color": color,
+                    "isSpecial": false // 通常の時間割
+                ]
+                
+                exportData.append(timetableData)
+            }
+            
+            // 特殊時程の情報も追加
+            exportSpecialScheduleDataForWidget(to: &exportData)
+            
+            // 今日の特殊時程情報を保存
+            let today = Date()
+            let patternInfo = getSpecialScheduleForDay(today)
+            sharedDefaults.set(patternInfo.hasSpecialSchedule, forKey: "widgetTodayHasSpecialSchedule")
+            sharedDefaults.set(patternInfo.name, forKey: "widgetTodayPatternName")
+            
+            // データを保存
+            sharedDefaults.set(exportData, forKey: "widgetTimetableData")
+            print("ウィジェット用に \(exportData.count) 件のデータをエクスポートしました")
+        } catch {
+            print("時間割データの取得中にエラーが発生: \(error.localizedDescription)")
+        }
+    }
+    
+    /// 特殊時程のデータをウィジェット用にエクスポート
+    private func exportSpecialScheduleDataForWidget(to data: inout [[String: Any]]) {
+        // 今日と明日の特殊時程をエクスポート
+        let today = Date()
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today
+        
+        // 今日の特殊時程
+        exportSpecialScheduleForDay(today, to: &data)
+        
+        // 明日の特殊時程
+        exportSpecialScheduleForDay(tomorrow, to: &data)
+    }
+    
+    /// 指定日の特殊時程をウィジェット用にエクスポート
+    private func exportSpecialScheduleForDay(_ date: Date, to data: inout [[String: Any]]) {
+        // 特殊時程マネージャーからデータを取得
+        let specialManager = SpecialScheduleManager.shared
+        guard let specialPattern = specialManager.getPatternForDate(date) else {
+            // 特殊時程がない場合は何もしない
+            return
+        }
+        
+        // 日付から曜日を取得（0=日曜, 1=月曜...）
+        let calendar = Calendar.current
+        let weekday = calendar.component(.weekday, from: date) - 1
+        
+        // 特殊時程のデータを作成
+        for item in specialPattern.items {
+            // 元の曜日と時限を表示するための情報を作成
+            let originalInfo = "(\(weekdayToString(item.originWeekday))\(item.originPeriod))"
+            
+            var timetableData: [String: Any] = [
+                "dayOfWeek": weekday,
+                "period": "\(item.period)",
+                "subjectName": item.subject?.name ?? "未設定",
+                "roomName": item.room?.name ?? "",
+                "teacher": item.teacher?.name ?? "",
+                "startTime": item.startTime ?? "",
+                "endTime": item.endTime ?? "",
+                "color": item.subject?.color ?? "0",
+                "isSpecial": true,
+                "originalInfo": originalInfo,
+                "patternName": specialPattern.name
+            ]
+            
+            // データに追加
+            data.append(timetableData)
+        }
+    }
+    
+    /// 曜日の数値を文字列に変換（0=日, 1=月...）
+    private func weekdayToString(_ weekday: Int16) -> String {
+        let weekdays = ["日", "月", "火", "水", "木", "金", "土"]
+        let index = Int(weekday)
+        if index >= 0 && index < weekdays.count {
+            return weekdays[index]
+        }
+        return "?"
+    }
+    
+    /// 指定日の特殊時程情報を取得
+    func getSpecialScheduleForDay(_ date: Date) -> (hasSpecialSchedule: Bool, name: String) {
+        let specialManager = SpecialScheduleManager.shared
+        if let pattern = specialManager.getPatternForDate(date) {
+            return (true, pattern.name ?? "特殊時程")
+        }
+        return (false, "通常時程")
+    }
+}

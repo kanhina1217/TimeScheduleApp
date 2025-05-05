@@ -36,6 +36,18 @@ class WidgetDataManager {
         return sharedDefaults
     }
     
+    /// 今日の特殊時程情報を取得する
+    func getTodayPatternInfo() -> (hasSpecialSchedule: Bool, patternName: String) {
+        guard let sharedDefaults = getSharedUserDefaults() else {
+            return (false, "通常時程")
+        }
+        
+        let hasSpecial = sharedDefaults.bool(forKey: "widgetTodayHasSpecialSchedule")
+        let patternName = sharedDefaults.string(forKey: "widgetTodayPatternName") ?? "通常時程"
+        
+        return (hasSpecial, patternName)
+    }
+    
     // 特定の曜日の時間割データを取得する
     func getTimetableForWeekday(_ weekday: Int) throws -> [TimeTableItem] {
         print("ウィジェット - 曜日 \(weekday) の時間割を取得します (CoreData形式)")
@@ -98,13 +110,21 @@ class WidgetDataManager {
             // 時間帯を「開始-終了」形式に
             let timeSlot = startTime.isEmpty || endTime.isEmpty ? "" : "\(startTime)-\(endTime)"
             
+            // 特殊時程の情報を取得
+            let isSpecial = item["isSpecial"] as? Bool ?? false
+            let originalInfo = item["originalInfo"] as? String
+            let patternName = item["patternName"] as? String
+            
             return TimeTableItem(
                 subject: subjectName,
                 startTime: timeSlot,
                 teacher: item["teacher"] as? String ?? "",
                 room: item["roomName"] as? String ?? "",
                 period: "\(period)限",
-                color: item["colorHex"] as? String ?? "#7FB3D5"  // デフォルト色を設定
+                color: item["color"] as? String ?? "0",  // デフォルト色を設定
+                isSpecial: isSpecial,
+                originalInfo: originalInfo,
+                patternName: patternName
             )
         }.sorted { (item1: TimeTableItem, item2: TimeTableItem) in
             // 時限順にソート
@@ -148,13 +168,21 @@ class WidgetDataManager {
             // 時間帯を「開始-終了」形式に
             let timeSlot = startTime.isEmpty || endTime.isEmpty ? "" : "\(startTime)-\(endTime)"
             
+            // 特殊時程の情報を取得
+            let isSpecial = item["isSpecial"] as? Bool ?? false
+            let originalInfo = item["originalInfo"] as? String
+            let patternName = item["patternName"] as? String
+            
             return TimeTableItem(
                 subject: "\(dayName): \(subjectName)",  // デバッグ用に曜日を追加
                 startTime: timeSlot,
                 teacher: item["teacher"] as? String ?? "",
                 room: item["roomName"] as? String ?? "",
                 period: "\(period)限",
-                color: item["colorHex"] as? String ?? "#7FB3D5"  // デフォルト色を設定
+                color: item["color"] as? String ?? "0",  // デフォルト色を設定
+                isSpecial: isSpecial,
+                originalInfo: originalInfo,
+                patternName: patternName
             )
         }.sorted { (item1: TimeTableItem, item2: TimeTableItem) in
             // 時限順にソート
@@ -167,168 +195,146 @@ class WidgetDataManager {
     }
 }
 
+// ウィジェットプロバイダー
 struct TimetableWidgetProvider: TimelineProvider {
-    // デバッグモード（問題が発生している場合にtrue）
-    private let debugMode = false
+    // アプリグループ識別子
+    private let appGroupIdentifier = "group.com.kanhina.timetable"
     
-    // プレースホルダーエントリー（ウィジェットがロードされる前に表示される）
+    // プレースホルダーエントリー（プレビュー用）
     func placeholder(in context: Context) -> TimetableWidgetEntry {
-        return TimetableWidgetEntry(date: Date(), timetableItems: [])
+        // サンプルの時間割で初期化
+        let sampleItems = [
+            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限", color: "1"),
+            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限", color: "2"),
+            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限", color: "3")
+        ]
+        
+        return TimetableWidgetEntry(date: Date(), timetableItems: sampleItems)
     }
-
-    // スナップショットエントリー（ウィジェットギャラリーで表示される）
+    
+    // スナップショット取得（ウィジェット追加時のプレビュー用）
     func getSnapshot(in context: Context, completion: @escaping (TimetableWidgetEntry) -> Void) {
-        // プレビュー用のサンプルデータを使用
-        let entry = TimetableWidgetEntry(date: Date(), timetableItems: sampleTimetableItems())
+        var entry: TimetableWidgetEntry
+        
+        if context.isPreview {
+            // プレビュー用のダミーデータ
+            entry = placeholder(in: context)
+        } else {
+            // 実データの取得
+            let timetableItems = loadTimetableData()
+            let patternName = loadPatternName()
+            entry = TimetableWidgetEntry(date: Date(), timetableItems: timetableItems, patternName: patternName)
+        }
+        
         completion(entry)
     }
-
-    // タイムラインエントリー（実際のウィジェット表示に使用される）
+    
+    // タイムライン作成（ウィジェット更新スケジュール）
     func getTimeline(in context: Context, completion: @escaping (Timeline<TimetableWidgetEntry>) -> Void) {
-        // データ取得処理
-        let entries = fetchCurrentSchedule()
+        // 現在時刻を取得
+        var entries: [TimetableWidgetEntry] = []
+        let currentDate = Date()
         
-        // 更新のスケジューリング（日付が変わるときと数時間ごと）
-        var refreshDate = calculateNextRefreshDate()
+        // アプリ共有データから時間割を取得
+        let timetableItems = loadTimetableData()
+        let patternName = loadPatternName()
         
-        // デバッグ中は頻繁に更新（開発時のみ）
-        #if DEBUG
-        refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
-        #endif
+        // 24時間分のエントリーを作成（12時間ごとに更新）
+        for hourOffset in 0 ..< 24 {
+            let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
+            let entry = TimetableWidgetEntry(date: entryDate, timetableItems: timetableItems, patternName: patternName)
+            entries.append(entry)
+        }
         
-        print("ウィジェット更新予定: \(refreshDate)")
+        // 次の日の0時に更新するタイムライン
+        let nextDay = Calendar.current.startOfDay(for: Calendar.current.date(byAdding: .day, value: 1, to: currentDate)!)
+        let refreshPolicy = WidgetKit.RefreshPolicy.atEnd
+        let timeline = Timeline(entries: entries, policy: refreshPolicy)
         
-        // タイムラインを作成して返す
-        let timeline = Timeline(entries: [entries], policy: .after(refreshDate))
         completion(timeline)
     }
     
-    // データ取得関数を分離して整理
-    private func fetchCurrentSchedule() -> TimetableWidgetEntry {
-        do {
-            // WidgetDataManagerからデータを取得
-            let widgetDataManager = WidgetDataManager()
-            
-            // デバッグモードの場合、すべてのデータを表示
-            if debugMode {
-                let allItems = widgetDataManager.getAllTimetableData()
-                return TimetableWidgetEntry(date: Date(), timetableItems: allItems)
-            }
-            
-            // 今日の曜日を取得 (1 = 日曜日, 2 = 月曜日, ...)
-            let calendar = Calendar.current
-            let today = calendar.component(.weekday, from: Date())
-            
-            // Swiftの曜日(1=日曜, 2=月曜...)からCoreDataの曜日(0=日曜, 1=月曜...)に変換
-            let coreDataWeekday = today - 1
-            
-            print("ウィジェット - 現在の曜日: \(today) → CoreData形式: \(coreDataWeekday)")
-            
-            // その曜日の時間割を取得
-            let todayItems = try widgetDataManager.getTimetableForWeekday(coreDataWeekday)
-            
-            if todayItems.isEmpty {
-                print("警告: 今日(\(coreDataWeekday))の授業データがありません")
-            } else {
-                print("今日の授業データ: \(todayItems.count)件")
-            }
-            
-            return TimetableWidgetEntry(date: Date(), timetableItems: todayItems)
-        } catch {
-            print("ウィジェットデータの取得中にエラーが発生: \(error.localizedDescription)")
-            // エラーが発生した場合は空のデータを返す
-            return TimetableWidgetEntry(date: Date(), timetableItems: [])
+    // 共有UserDefaultsから時間割データを読み込む
+    private func loadTimetableData() -> [TimeTableItem] {
+        guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier),
+              let rawData = sharedDefaults.array(forKey: "widgetTimetableData") as? [[String: Any]] else {
+            print("ウィジェット: 時間割データが読み込めませんでした")
+            return []
         }
+        
+        // データを変換
+        var timetableItems: [TimeTableItem] = []
+        
+        for itemData in rawData {
+            // 必要なデータを取り出す
+            let subject = itemData["subjectName"] as? String
+            let room = itemData["roomName"] as? String
+            let teacher = itemData["teacher"] as? String
+            let period = itemData["period"] as? String
+            let startTime = itemData["startTime"] as? String
+            let color = itemData["color"] as? String
+            let isSpecial = itemData["isSpecial"] as? Bool ?? false
+            let originalInfo = itemData["originalInfo"] as? String
+            
+            // TimeTableItemを作成
+            let item = TimeTableItem(
+                subject: subject,
+                startTime: startTime,
+                teacher: teacher,
+                room: room,
+                period: period,
+                color: color,
+                isSpecial: isSpecial,
+                originalInfo: originalInfo
+            )
+            
+            timetableItems.append(item)
+        }
+        
+        return timetableItems
     }
     
-    // 次回の更新時刻を計算
-    private func calculateNextRefreshDate() -> Date {
-        let calendar = Calendar.current
+    // 特殊時程名を読み込む
+    private func loadPatternName() -> String {
+        guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
+            return "通常時程"
+        }
         
-        // 次の更新時刻を計算（1. 日付が変わるとき、2. 授業開始時間に近いとき）
-        let midnight = calendar.startOfDay(for: calendar.date(byAdding: .day, value: 1, to: Date())!)
-        
-        // 現在時刻
-        let now = Date()
-        
-        // 午後11時以降なら次の日の朝6時、それ以外は3時間ごとに更新
-        if calendar.component(.hour, from: now) >= 23 {
-            // 次の日の朝6時
-            return calendar.date(bySettingHour: 6, minute: 0, second: 0, of: midnight)!
+        let hasSpecialSchedule = sharedDefaults.bool(forKey: "widgetTodayHasSpecialSchedule")
+        if hasSpecialSchedule {
+            return sharedDefaults.string(forKey: "widgetTodayPatternName") ?? "特殊時程"
         } else {
-            // 3時間後（最大でも翌日の午前0時）
-            let threeHoursLater = calendar.date(byAdding: .hour, value: 3, to: now)!
-            return min(threeHoursLater, midnight)
-        }
-    }
-    
-    // プレビュー用のサンプルデータ
-    private func sampleTimetableItems() -> [TimeTableItem] {
-        return [
-            TimeTableItem(subject: "プログラミング概論", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限", color: "#7FB3D5"),
-            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限", color: "#F5B041"),
-            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限", color: "#82E0AA")
-        ]
-    }
-}
-
-// ウィジェットのエントリーモデル
-struct TimetableWidgetEntry: TimelineEntry {
-    let date: Date
-    let timetableItems: [TimeTableItem]
-}
-
-// 時間割アイテムのデータモデル
-struct TimeTableItem: Hashable {
-    var subject: String?
-    var startTime: String?
-    var teacher: String?
-    var room: String?
-    var period: String?
-    var color: String?  // 色情報を追加
-    
-    // 位置情報をroomに統合
-    var location: String? {
-        get {
-            return room
-        }
-        set {
-            room = newValue
+            return "通常時程"
         }
     }
 }
 
-// ウィジェット本体の設定
+// ウィジェット設定
 struct TimetableWidget: Widget {
     let kind: String = "TimetableWidiget"
     
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TimetableWidgetProvider()) { entry in
             TimetableWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("時間割")
-        .description("授業スケジュールを表示します")
+        .configurationDisplayName("時間割ウィジェット")
+        .description("今日の時間割をホーム画面に表示します。")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
 
-// ウィジェットのプレビュー
+// プレビュー
 struct TimetableWidget_Previews: PreviewProvider {
     static var previews: some View {
         let sampleItems = [
-            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限", color: "#7FB3D5"),
-            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限", color: "#F5B041")
+            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限", color: "1"),
+            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限", color: "2"),
+            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限", color: "3")
         ]
         
         let entry = TimetableWidgetEntry(date: Date(), timetableItems: sampleItems)
         
-        TimetableWidgetEntryView(entry: entry)
+        return TimetableWidgetEntryView(entry: entry)
             .previewContext(WidgetPreviewContext(family: .systemMedium))
-            .previewDisplayName("標準サイズ")
-        
-        TimetableWidgetEntryView(entry: entry)
-            .previewContext(WidgetPreviewContext(family: .systemSmall))
-            .previewDisplayName("小サイズ")
     }
 }

@@ -1,216 +1,171 @@
 import WidgetKit
 import SwiftUI
 
-struct TimetableWidgetEntryView: View {
-    var entry: TimetableWidgetEntry
+struct TimetableWidgetEntryView : View {
+    var entry: TimetableWidgetProvider.Entry
     @Environment(\.widgetFamily) var family
-    @Environment(\.colorScheme) var colorScheme
-    
-    // 曜日表示のための配列
-    private let weekdayNames = ["日", "月", "火", "水", "木", "金", "土"]
-    
-    // 数値インデックスに対応する色の配列
-    private let indexColors: [Color] = [
-        .blue,          // 0: デフォルト
-        .red,           // 1
-        .green,         // 2
-        .orange,        // 3
-        .purple,        // 4
-        .pink,          // 5
-        .yellow,        // 6
-        .gray,          // 7
-        .cyan,          // 8
-        .indigo,        // 9
-        .mint,          // 10
-        .brown,         // 11
-        .teal           // 12
-    ]
-    
-    // 曜日を取得
-    private func getWeekday(_ date: Date) -> Int {
-        let calendar = Calendar.current
-        return calendar.component(.weekday, from: date)
-    }
-    
-    // 科目名から色インデックスを解釈してカラーを取得
-    private func colorForSubject(_ subject: String, colorIndex: String? = nil) -> Color {
-        // 色情報が存在する場合はそれを使用
-        if let colorIndexStr = colorIndex, !colorIndexStr.isEmpty {
-            // デバッグ出力
-            print("色情報を適用: \(subject) → インデックス: \(colorIndexStr)")
-            
-            // 文字列から数値に変換
-            if let index = Int(colorIndexStr), index >= 0 && index < indexColors.count {
-                print("成功: \(subject)の色を設定 → インデックス: \(index)")
-                return indexColors[index]
-            } else {
-                print("警告: \(subject)のカラーインデックス変換に失敗 \(colorIndexStr)")
-            }
-        }
-        
-        print("科目 \(subject) に有効な色情報なし、デフォルト青を使用")
-        // 色情報がない場合はデフォルトの青色を返す
-        return indexColors[0]
-    }
-    
-    // 時限を整数に変換する関数
-    private func periodToInt(_ period: String?) -> Int {
-        guard let periodStr = period else { return 0 }
-        let digits = periodStr.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-        return Int(digits) ?? 0
-    }
-    
-    // 指定した時限の授業を取得
-    private func classForPeriod(_ period: Int) -> TimeTableItem? {
-        return entry.timetableItems.first { item in
-            periodToInt(item.period) == period
-        }
-    }
-    
-    // 時間帯を整形して表示
-    private func formatTimeSlot(_ timeSlot: String?) -> String {
-        guard let timeSlot = timeSlot else { return "" }
-        
-        let components = timeSlot.split(separator: "-")
-        if components.count == 2 {
-            let start = components[0].trimmingCharacters(in: .whitespaces)
-            return start
-        }
-        return timeSlot
-    }
     
     var body: some View {
-        // 今日の曜日を取得
-        let weekday = getWeekday(Date())
-        
         ZStack {
-            // 背景
             Color(UIColor.systemBackground)
                 .edgesIgnoringSafeArea(.all)
             
-            VStack(alignment: .center, spacing: 4) {
-                // ヘッダー
+            VStack(alignment: .leading, spacing: 0) {
+                // タイトル部分
                 HStack {
-                    Text("\(weekdayNames[weekday - 1])曜日")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.primary)
-                    
+                    Image(systemName: "calendar")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("今日の予定")
+                        .font(.system(size: 14, weight: .semibold))
                     Spacer()
+                    Text(entry.patternName)
+                        .font(.system(size: 11))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.blue.opacity(0.2))
+                        .cornerRadius(4)
                 }
-                .padding(.horizontal, 8)
-                .padding(.top, 6)
-                .padding(.bottom, 2)
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
                 
-                if entry.timetableItems.isEmpty {
-                    // 授業がない場合
-                    Spacer()
-                    VStack(spacing: 8) {
-                        Image(systemName: "calendar.badge.exclamationmark")
-                            .font(.system(size: 24))
-                            .foregroundColor(.secondary)
-                        
-                        Text("今日の授業はありません")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
+                // 時間割リスト
+                VStack(spacing: family == .systemSmall ? 2 : 4) {
+                    ForEach(entry.timetableItems.prefix(family == .systemSmall ? 3 : 5), id: \.period) { item in
+                        timetableRow(for: item)
                     }
-                    .frame(maxWidth: .infinity)
-                    Spacer()
-                } else {
-                    // 表形式で表示
-                    VStack(spacing: 2) {
-                        // 1行目：時限と時程
-                        HStack(spacing: 0) {
-                            ForEach(1...5, id: \.self) { period in
-                                let item = classForPeriod(period)
-                                VStack(spacing: 0) {
-                                    Text("\(period)")
-                                        .font(.system(size: family == .systemSmall ? 10 : 12, weight: .bold))
-                                        .foregroundColor(.primary)
-                                    
-                                    if let time = item?.startTime {
-                                        Text(formatTimeSlot(time))
-                                            .font(.system(size: family == .systemSmall ? 8 : 9))
-                                            .foregroundColor(.secondary)
-                                    } else {
-                                        Text("-")
-                                            .font(.system(size: family == .systemSmall ? 8 : 9))
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                        }
-                        .padding(.horizontal, 4)
-                        .padding(.bottom, 2)
-                        
-                        // 2行目：授業セル
-                        HStack(spacing: 2) {
-                            ForEach(1...5, id: \.self) { period in
-                                if let item = classForPeriod(period) {
-                                    // 授業があるセル
-                                    let backgroundColor = colorForSubject(item.subject ?? "", colorIndex: item.color)
-                                    
-                                    VStack(spacing: 2) {
-                                        Text(item.subject ?? "")
-                                            .font(.system(size: family == .systemSmall ? 8 : 10, weight: .medium))
-                                            .foregroundColor(.white)
-                                            .lineLimit(2)
-                                            .multilineTextAlignment(.center)
-                                        
-                                        if let room = item.room, !room.isEmpty {
-                                            Text(room)
-                                                .font(.system(size: family == .systemSmall ? 7 : 8))
-                                                .foregroundColor(.white.opacity(0.9))
-                                                .lineLimit(1)
-                                        }
-                                    }
-                                    .padding(.vertical, 3)
-                                    .padding(.horizontal, 2)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .background(backgroundColor.opacity(0.8))
-                                    .cornerRadius(6)
-                                } else {
-                                    // 授業がないセル
-                                    VStack {
-                                        Text("-")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .background(Color.gray.opacity(0.1))
-                                    .cornerRadius(6)
-                                }
-                            }
-                        }
-                        .frame(maxHeight: .infinity)
+                    
+                    if entry.timetableItems.isEmpty {
+                        emptyTimetableRow()
                     }
-                    .padding(4)
                 }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 10)
+                
+                Spacer(minLength: 0)
+                
+                // 反復処理確認エリアを追加
+                HStack {
+                    Spacer()
+                    Text("反復処理を続行")
+                        .font(.system(size: 11))
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(4)
+                    Spacer()
+                }
+                .padding(.bottom, 6)
+                .widgetURL(URL(string: "timeschedule://continue-iteration"))
             }
         }
     }
-}
-
-// 時間割のプレビュー
-struct TimetableWidgetEntryView_Previews: PreviewProvider {
-    static var previews: some View {
-        let sampleItems = [
-            TimeTableItem(subject: "プログラミング", startTime: "9:00-10:30", teacher: "山田先生", room: "A101", period: "1限", color: "1"),
-            TimeTableItem(subject: "データベース", startTime: "10:40-12:10", teacher: "鈴木先生", room: "B201", period: "2限", color: "2"),
-            TimeTableItem(subject: "AI入門", startTime: "13:00-14:30", teacher: "佐藤先生", room: "C301", period: "3限", color: "3"),
-            TimeTableItem(subject: "情報工学", startTime: "14:40-16:10", teacher: "田中先生", room: "D401", period: "4限", color: "4"),
-            TimeTableItem(subject: "プロジェクト演習", startTime: "16:20-17:50", teacher: "小林先生", room: "E501", period: "5限", color: "5")
+    
+    // 通常時間割行のビュー
+    private func timetableRow(for item: TimeTableItem) -> some View {
+        HStack(spacing: 6) {
+            // 科目カラー表示
+            colorTag(for: item.color ?? "0")
+            
+            // 時限と時間
+            VStack(alignment: .leading, spacing: 0) {
+                Text(item.period ?? "")
+                    .font(.system(size: family == .systemSmall ? 10 : 11, weight: .medium))
+                if let startTime = item.startTime {
+                    Text(startTime)
+                        .font(.system(size: family == .systemSmall ? 9 : 10))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(width: 40, alignment: .leading)
+            
+            // 科目名
+            VStack(alignment: .leading, spacing: 0) {
+                if let subject = item.subject {
+                    Text(subject)
+                        .font(.system(size: family == .systemSmall ? 12 : 13, weight: .medium))
+                        .lineLimit(1)
+                } else {
+                    Text("授業なし")
+                        .font(.system(size: family == .systemSmall ? 12 : 13))
+                        .foregroundColor(.secondary)
+                }
+                
+                // 教室情報
+                HStack(spacing: 4) {
+                    if let room = item.room, !room.isEmpty {
+                        Text(room)
+                            .font(.system(size: family == .systemSmall ? 9 : 10))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // 特殊時程の場合に元情報を表示
+                    if item.isSpecial, let originalInfo = item.originalInfo {
+                        Text("元：\(originalInfo)")
+                            .font(.system(size: family == .systemSmall ? 9 : 10))
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(.vertical, family == .systemSmall ? 4 : 6)
+        .padding(.horizontal, family == .systemSmall ? 6 : 8)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(6)
+    }
+    
+    // 空の時間割行ビュー
+    private func emptyTimetableRow() -> some View {
+        HStack {
+            Spacer()
+            Text("本日の予定はありません")
+                .font(.system(size: family == .systemSmall ? 11 : 12))
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+        .padding(.vertical, family == .systemSmall ? 10 : 12)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(6)
+    }
+    
+    // 科目カラータグ表示
+    private func colorTag(for colorString: String) -> some View {
+        // 色コード文字列から色を取得
+        let color = getSubjectColor(from: colorString)
+        
+        return Rectangle()
+            .fill(color)
+            .frame(width: 4, height: family == .systemSmall ? 20 : 24)
+            .cornerRadius(2)
+    }
+    
+    // 科目カラー変換
+    private func getSubjectColor(from colorString: String) -> Color {
+        // 色番号に基づいて色を返す
+        // 色番号は0から始まる整数を想定
+        guard let colorIndex = Int(colorString), colorIndex >= 0 else {
+            return Color.gray // デフォルト色
+        }
+        
+        // 事前定義された色のリスト
+        let colors: [Color] = [
+            .gray,         // 0: デフォルト
+            .blue,         // 1: 青
+            .red,          // 2: 赤
+            .green,        // 3: 緑
+            .orange,       // 4: オレンジ
+            .purple,       // 5: 紫
+            .pink,         // 6: ピンク
+            .yellow,       // 7: 黄色
+            .teal,         // 8: ティール
+            .indigo        // 9: インディゴ
         ]
         
-        let entry = TimetableWidgetEntry(date: Date(), timetableItems: sampleItems)
-        
-        TimetableWidgetEntryView(entry: entry)
-            .previewContext(WidgetPreviewContext(family: .systemMedium))
-            .previewDisplayName("標準サイズ")
-        
-        TimetableWidgetEntryView(entry: entry)
-            .previewContext(WidgetPreviewContext(family: .systemSmall))
-            .previewDisplayName("小サイズ")
+        // 範囲内の色を返す
+        let index = min(colorIndex, colors.count - 1)
+        return colors[index]
     }
 }

@@ -244,6 +244,7 @@ struct MainView: View {
     @State private var showingCalendarAlert = false // カレンダー連携のアラート
     @State private var specialTimetables: [NSManagedObject] = [] // 特殊時程のデータ
     @State private var isSpecialMode = false // 特殊時程表示モード
+    @State private var showingIterationAlert = false // 反復処理確認ダイアログ表示フラグ
     
     // 曜日と時限
     private let daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"]
@@ -584,6 +585,29 @@ struct MainView: View {
             secondaryButton: .cancel(Text("キャンセル"))
         )
     }
+    
+    // 反復処理の継続確認アラート
+    private var iterationAlert: Alert {
+        Alert(
+            title: Text("反復処理を続行しますか？"),
+            message: Text("この操作を続行すると、次のステップに進みます。"),
+            primaryButton: .default(Text("続行"), action: continueIteration),
+            secondaryButton: .cancel(Text("キャンセル"))
+        )
+    }
+    
+    // 反復処理を続行する処理
+    private func continueIteration() {
+        // ここに反復処理を継続するロジックを実装
+        print("反復処理を続行します")
+        
+        // 例：タスクの更新など
+        let taskManager = TaskExtensions()
+        taskManager.processNextIteration(context: viewContext)
+        
+        // ウィジェットデータも更新
+        updateWidgetData()
+    }
 
     var body: some View {
         contentStackView
@@ -618,6 +642,9 @@ struct MainView: View {
                 loadDefaultPattern()
                 selectedDate = Date()
                 loadTimetableForDate(selectedDate)
+                
+                // 通知リスナーを設定
+                setupNotificationObservers()
             }
             .onChange(of: selectedPattern) { _, _ in
                 updateWidgetData()
@@ -632,6 +659,32 @@ struct MainView: View {
             .alert(isPresented: $showingCalendarAlert) {
                 calendarAlert
             }
+            .alert(isPresented: $showingIterationAlert) {
+                iterationAlert
+            }
+    }
+    
+    // 通知リスナーの設定
+    private func setupNotificationObservers() {
+        // 以前に登録された可能性のあるオブザーバーを削除
+        NotificationCenter.default.removeObserver(self, 
+                                                name: SceneDelegate.continueIterationNotification, 
+                                                object: nil)
+        
+        // 新しいオブザーバーを追加
+        NotificationCenter.default.addObserver(
+            forName: SceneDelegate.continueIterationNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            // 通知を受け取ったら確認ダイアログを表示
+            self.showingIterationAlert = true
+        }
+    }
+    
+    // デイニシャライザでオブザーバーを解除
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }
 

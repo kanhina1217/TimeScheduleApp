@@ -48,14 +48,73 @@ class WidgetDataManager {
             return
         }
         
+        // 今日と明日の日付を取得
+        let today = Date()
+        let calendar = Calendar.current
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else {
+            print("明日の日付の計算に失敗しました")
+            return
+        }
+        
         // 現在使用中のパターンIDを保存
         if let currentPattern = getCurrentPatternID(context: context) {
             sharedDefaults.set(currentPattern, forKey: "currentPattern")
         }
         
-        // 時間割データをエクスポート
-        let timetableData = fetchTimetableData(context: context)
-        sharedDefaults.set(timetableData, forKey: "widgetTimetableData")
+        // 今日と明日の時間割データをエクスポート
+        let todayData = fetchTimetableDataForDate(today, context: context)
+        let tomorrowData = fetchTimetableDataForDate(tomorrow, context: context)
+        
+        // 全時間割データを結合
+        var allTimetableData = todayData
+        for item in tomorrowData {
+            // 既に同じデータがないか確認（重複防止）
+            var isDuplicate = false
+            for existingItem in allTimetableData {
+                if let existingDay = existingItem["dayOfWeek"] as? Int,
+                   let existingPeriod = existingItem["period"] as? String,
+                   let newDay = item["dayOfWeek"] as? Int,
+                   let newPeriod = item["period"] as? String,
+                   existingDay == newDay && existingPeriod == newPeriod {
+                    isDuplicate = true
+                    break
+                }
+            }
+            
+            if !isDuplicate {
+                allTimetableData.append(item)
+            }
+        }
+        
+        // 日付情報も保存
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        sharedDefaults.set(dateFormatter.string(from: today), forKey: "widgetTodayDate")
+        sharedDefaults.set(dateFormatter.string(from: tomorrow), forKey: "widgetTomorrowDate")
+        
+        // 特殊時程情報を確認
+        let todaySpecialSchedule = CalendarManager.shared.getSpecialScheduleForDate(today)
+        let tomorrowSpecialSchedule = CalendarManager.shared.getSpecialScheduleForDate(tomorrow)
+        
+        // 特殊時程情報があれば保存
+        if let specialSchedule = todaySpecialSchedule {
+            sharedDefaults.set(true, forKey: "widgetTodayHasSpecialSchedule")
+            sharedDefaults.set(specialSchedule.patternName, forKey: "widgetTodayPatternName")
+        } else {
+            sharedDefaults.set(false, forKey: "widgetTodayHasSpecialSchedule")
+            sharedDefaults.set("通常時程", forKey: "widgetTodayPatternName")
+        }
+        
+        if let specialSchedule = tomorrowSpecialSchedule {
+            sharedDefaults.set(true, forKey: "widgetTomorrowHasSpecialSchedule")
+            sharedDefaults.set(specialSchedule.patternName, forKey: "widgetTomorrowPatternName")
+        } else {
+            sharedDefaults.set(false, forKey: "widgetTomorrowHasSpecialSchedule")
+            sharedDefaults.set("通常時程", forKey: "widgetTomorrowPatternName")
+        }
+        
+        // 時間割データを保存
+        sharedDefaults.set(allTimetableData, forKey: "widgetTimetableData")
         
         // 保存を確実に行う
         if #available(iOS 13.0, *) {
@@ -68,7 +127,9 @@ class WidgetDataManager {
         // ウィジェットの更新を通知
         WidgetCenter.shared.reloadAllTimelines()
         
-        print("ウィジェットデータをエクスポートしました: \(timetableData.count)件")
+        print("ウィジェットデータをエクスポートしました: \(allTimetableData.count)件")
+        print("今日の特殊時程: \(todaySpecialSchedule?.patternName ?? "なし")")
+        print("明日の特殊時程: \(tomorrowSpecialSchedule?.patternName ?? "なし")")
         
         // デバッグ情報の表示
         print("アプリグループID: \(appGroupIdentifier)")
@@ -84,7 +145,224 @@ class WidgetDataManager {
         return UserDefaults.standard.string(forKey: "currentPatternID") ?? "default"
     }
     
-    /// 時間割データを取得してエクスポート用に変換
+    /// 指定した日付の時間割データを取得（特殊時程を考慮）
+    private func fetchTimetableDataForDate(_ date: Date, context: NSManagedObjectContext) -> [[String: Any]] {
+        print("日付 \(date) の時間割データ取得")
+        
+        // その日が特殊時程かどうか確認
+        if let specialSchedule = CalendarManager.shared.getSpecialScheduleForDate(date) {
+            print("特殊時程を検出: \(specialSchedule.patternName)")
+            
+            // 特殊時程の時間割データを取得
+            return fetchSpecialTimetableData(for: date, pattern: specialSchedule.patternName, context: context)
+        } else {
+            print("通常時程の時間割データを取得")
+            
+            // 曜日を取得して通常の時間割データを取得
+            let calendar = Calendar.current
+            let weekday = calendar.component(.weekday, from: date) - 1 // 0=日曜、1=月曜...
+
+            return fetchRegularTimetableData(for: weekday, date: date, context: context)
+        }
+    }
+    
+    /// 特殊時程の時間割データを取得
+    private func fetchSpecialTimetableData(for date: Date, pattern: String, context: NSManagedObjectContext) -> [[String: Any]] {
+        var result: [[String: Any]] = []
+        
+        // SpecialScheduleManagerから特殊時程データを取得
+        let specialTimetables = SpecialScheduleManager.shared.getTimetableDataForSpecialSchedule(date: date, context: context)
+        print("特殊時程の時間割データ数: \(specialTimetables.count)")
+        
+        // 特殊時程の設定情報も取得（元の時限情報表示用）
+        let specialConfigs = SpecialScheduleManager.shared.getSpecialScheduleData(for: date, context: context)
+        
+        // デフォルトパターン情報を取得
+        var defaultPattern: NSManagedObject? = nil
+        let patternFetch = NSFetchRequest<NSFetchRequestResult>(entityName: "Pattern")
+        patternFetch.predicate = NSPredicate(format: "isDefault == %@", NSNumber(value: true))
+        patternFetch.fetchLimit = 1
+        
+        do {
+            let patterns = try context.fetch(patternFetch) as? [NSManagedObject]
+            defaultPattern = patterns?.first
+        } catch {
+            print("デフォルトパターン取得エラー: \(error)")
+        }
+        
+        // 特殊時程のデータを変換
+        for timetable in specialTimetables {
+            // 必要なデータを抽出
+            if let dayOfWeek = timetable.value(forKey: "dayOfWeek") as? Int16,
+               let period = timetable.value(forKey: "period") as? Int16,
+               let subjectName = timetable.value(forKey: "subjectName") as? String {
+                
+                // 各項目を辞書に格納
+                var itemDict: [String: Any] = [
+                    "dayOfWeek": Int(dayOfWeek),  // 0=日曜, 1=月曜, ...として保存
+                    "period": String(period),     // 文字列として保存
+                    "subjectName": subjectName,
+                    "isSpecial": true,            // 特殊時程フラグを追加
+                    "patternName": pattern        // パターン名を保存
+                ]
+                
+                // 追加の特殊時程情報
+                let targetPeriod = Int(period)
+                let originalInfo = findOriginalInfoForPeriod(targetPeriod, configs: specialConfigs)
+                if let originalInfo = originalInfo {
+                    itemDict["originalInfo"] = originalInfo
+                }
+                
+                // パターンIDを取得（リレーションシップから）
+                if let patternRelation = timetable.value(forKey: "pattern") as? NSManagedObject,
+                   let patternID = patternRelation.value(forKey: "id") as? UUID {
+                    itemDict["patternID"] = patternID.uuidString
+                } else if let defaultPattern = defaultPattern,
+                          let patternID = defaultPattern.value(forKey: "id") as? UUID {
+                    itemDict["patternID"] = patternID.uuidString
+                } else {
+                    itemDict["patternID"] = "default"
+                }
+                
+                // 色情報を追加
+                if let color = timetable.value(forKey: "color") as? String {
+                    itemDict["color"] = color
+                }
+                
+                // 任意の項目は存在する場合のみ追加
+                if let classroom = timetable.value(forKey: "classroom") as? String {
+                    itemDict["roomName"] = classroom
+                } else {
+                    itemDict["roomName"] = ""
+                }
+                
+                // 教員情報
+                itemDict["teacher"] = ""
+                
+                // 時間情報を追加（パターンから取得）
+                var startTime = ""
+                var endTime = ""
+                
+                if let defaultPattern = defaultPattern {
+                    startTime = defaultPattern.value(forKey: "period\(period)Start") as? String ?? getStartTimeForPeriod(String(period))
+                    endTime = defaultPattern.value(forKey: "period\(period)End") as? String ?? getEndTimeForPeriod(String(period))
+                } else {
+                    startTime = getStartTimeForPeriod(String(period))
+                    endTime = getEndTimeForPeriod(String(period))
+                }
+                
+                itemDict["startTime"] = startTime
+                itemDict["endTime"] = endTime
+                itemDict["timeSlot"] = "\(startTime)-\(endTime)"
+                
+                // 日付情報を追加
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd"
+                itemDict["date"] = dateFormatter.string(from: date)
+                
+                result.append(itemDict)
+            }
+        }
+        
+        return result
+    }
+    
+    /// 元の時程情報を取得
+    private func findOriginalInfoForPeriod(_ period: Int, configs: [SpecialScheduleManager.PeriodReorderConfig]) -> String? {
+        // 特殊時程の設定から対象の時限に該当する情報を検索
+        for config in configs {
+            let targetIndex = config.targetPeriods.firstIndex(of: period)
+            if let index = targetIndex, index < config.originalPeriods.count {
+                let originalPeriod = config.originalPeriods[index]
+                let originalDay = config.originalDay
+                
+                // 曜日を日本語表記に変換（0=月、1=火...）
+                let days = ["月", "火", "水", "木", "金", "土", "日"]
+                if originalDay >= 0 && originalDay < days.count {
+                    return "（\(days[originalDay])\(originalPeriod)）"
+                }
+            }
+        }
+        return nil
+    }
+    
+    /// 通常の時間割データを取得してエクスポート用に変換
+    private func fetchRegularTimetableData(for weekday: Int, date: Date, context: NSManagedObjectContext) -> [[String: Any]] {
+        var result: [[String: Any]] = []
+        
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Timetable")
+        fetchRequest.predicate = NSPredicate(format: "dayOfWeek == %d", Int16(weekday))
+        
+        do {
+            if let timetables = try context.fetch(fetchRequest) as? [NSManagedObject] {
+                for timetable in timetables {
+                    // 必要なデータを抽出
+                    if let dayOfWeek = timetable.value(forKey: "dayOfWeek") as? Int16,
+                       let period = timetable.value(forKey: "period") as? Int16,
+                       let subjectName = timetable.value(forKey: "subjectName") as? String {
+                        
+                        // 各項目を辞書に格納
+                        var itemDict: [String: Any] = [
+                            "dayOfWeek": Int(dayOfWeek),  // 0=日曜, 1=月曜, ...として保存
+                            "period": String(period),     // 文字列として保存
+                            "subjectName": subjectName,
+                            "isSpecial": false            // 通常時程フラグ
+                        ]
+                        
+                        // パターンIDを取得（リレーションシップから）
+                        if let patternRelation = timetable.value(forKey: "pattern") as? NSManagedObject,
+                           let patternID = patternRelation.value(forKey: "id") as? UUID {
+                            itemDict["patternID"] = patternID.uuidString
+                            
+                            // パターン情報から時間を取得
+                            let startTime = patternRelation.value(forKey: "period\(period)Start") as? String ?? getStartTimeForPeriod(String(period))
+                            let endTime = patternRelation.value(forKey: "period\(period)End") as? String ?? getEndTimeForPeriod(String(period))
+                            itemDict["startTime"] = startTime
+                            itemDict["endTime"] = endTime
+                            itemDict["timeSlot"] = "\(startTime)-\(endTime)"
+                        } else {
+                            itemDict["patternID"] = "default"
+                            
+                            // デフォルト時間を使用
+                            let startTime = getStartTimeForPeriod(String(period))
+                            let endTime = getEndTimeForPeriod(String(period))
+                            itemDict["startTime"] = startTime
+                            itemDict["endTime"] = endTime
+                            itemDict["timeSlot"] = "\(startTime)-\(endTime)"
+                        }
+                        
+                        // 色情報を追加
+                        if let color = timetable.value(forKey: "color") as? String {
+                            itemDict["color"] = color
+                        }
+                        
+                        // 任意の項目は存在する場合のみ追加
+                        if let classroom = timetable.value(forKey: "classroom") as? String {
+                            itemDict["roomName"] = classroom
+                        } else {
+                            itemDict["roomName"] = ""
+                        }
+                        
+                        // 教員情報 - CoreDataモデルには存在しないため直接アクセスしない
+                        itemDict["teacher"] = ""
+                        
+                        // 日付情報を追加
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateFormat = "yyyy-MM-dd"
+                        itemDict["date"] = dateFormatter.string(from: date)
+                        
+                        result.append(itemDict)
+                    }
+                }
+            }
+        } catch {
+            print("時間割データの取得に失敗: \(error)")
+        }
+        
+        return result
+    }
+    
+    /// 時間割データを取得してエクスポート用に変換（旧バージョン）
     private func fetchTimetableData(context: NSManagedObjectContext) -> [[String: Any]] {
         var result: [[String: Any]] = []
         
@@ -225,6 +503,13 @@ class WidgetDataManager {
                 print("  時間: \(timeSlot)")
             } else if let startTime = item["startTime"] as? String, let endTime = item["endTime"] as? String {
                 print("  時間: \(startTime)-\(endTime)")
+            }
+            
+            if let isSpecial = item["isSpecial"] as? Bool, isSpecial {
+                print("  特殊時程: はい")
+                if let originalInfo = item["originalInfo"] as? String {
+                    print("  元の情報: \(originalInfo)")
+                }
             }
             
             print("---")
