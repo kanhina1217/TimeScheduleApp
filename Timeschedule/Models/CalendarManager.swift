@@ -161,6 +161,64 @@ class CalendarManager {
         return uniqueSchedules
     }
 
+    // 利用可能なカレンダーを取得
+    func getAvailableCalendars() -> [EKCalendar] {
+        checkAccessStatus()
+        guard hasAccess else { return [] }
+        
+        // 書き込み可能なカレンダーのみを取得
+        let calendars = eventStore.calendars(for: .event)
+            .filter { $0.allowsContentModifications }
+        
+        return calendars.sorted { $0.title < $1.title }
+    }
+    
+    // 指定したカレンダーに特殊時程イベントを作成
+    func createScheduleEvent(patternName: String, date: Date, calendar: EKCalendar? = nil, completion: @escaping (Bool, Error?) -> Void) {
+        checkAccessStatus()
+        guard hasAccess else {
+            completion(false, NSError(domain: "CalendarManager", code: 403, userInfo: [NSLocalizedDescriptionKey: "カレンダーへのアクセスが許可されていません。"]))
+            return
+        }
+
+        let calendarObj = calendar ?? eventStore.defaultCalendarForNewEvents
+        guard calendarObj != nil else {
+            completion(false, NSError(domain: "CalendarManager", code: 501, userInfo: [NSLocalizedDescriptionKey: "カレンダーが見つかりません。"]))
+            return
+        }
+
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        guard let eventStartDate = calendar.date(bySettingHour: 0, minute: 0, second: 0, of: startOfDay),
+              let eventEndDate = calendar.date(byAdding: .day, value: 1, to: eventStartDate) else {
+            completion(false, NSError(domain: "CalendarManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "日付の設定に失敗しました。"]))
+            return
+        }
+
+        deleteExistingScheduleEvents(for: date) { [weak self] success, error in
+            guard let self = self, success else {
+                completion(false, error ?? NSError(domain: "CalendarManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "既存イベントの削除に失敗しました。"]))
+                return
+            }
+
+            let event = EKEvent(eventStore: self.eventStore)
+            event.title = "\(self.specialScheduleEventTitle): \(patternName)"
+            event.startDate = eventStartDate
+            event.endDate = eventEndDate
+            event.isAllDay = true
+            event.notes = "時間割アプリの特殊時程設定: \(patternName)"
+            event.calendar = calendarObj
+
+            do {
+                try self.eventStore.save(event, span: .thisEvent)
+                completion(true, nil)
+            } catch {
+                print("特殊時程イベントの保存に失敗しました: \(error)")
+                completion(false, error)
+            }
+        }
+    }
+
     // カレンダーに特殊時程イベントを作成
     func createScheduleEvent(patternName: String, date: Date, completion: @escaping (Bool, Error?) -> Void) {
         checkAccessStatus()

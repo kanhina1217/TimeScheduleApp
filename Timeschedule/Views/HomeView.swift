@@ -171,13 +171,30 @@ struct TodayScheduleCard: View {
     
     // 特殊時程の確認
     func checkSpecialSchedule() {
+        // 環境オブジェクトからContext取得
+        let context = PersistenceController.shared.container.viewContext
+        
         // カレンダーから特殊時程を取得
         if let specialSchedule = CalendarManager.shared.getSpecialScheduleForDate(date) {
             // パターン名を設定
             patternName = specialSchedule.patternName
         } else {
-            // 特殊時程がなければ通常時程
-            patternName = "通常時程"
+            // 特殊時程がなければデフォルトパターンの名前を表示
+            let fetchRequest: NSFetchRequest<Pattern> = Pattern.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "isDefault == %@", NSNumber(value: true))
+            fetchRequest.fetchLimit = 1
+            
+            do {
+                let results = try context.fetch(fetchRequest)
+                if let defaultPattern = results.first {
+                    patternName = defaultPattern.name ?? "通常時程"
+                } else {
+                    patternName = "通常時程"
+                }
+            } catch {
+                print("デフォルトパターンの取得に失敗しました: \(error)")
+                patternName = "通常時程"
+            }
         }
     }
 }

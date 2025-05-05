@@ -10,20 +10,34 @@ struct SpecialScheduleView: View {
     @FetchRequest(
         entity: Pattern.entity(),
         sortDescriptors: [
-            NSSortDescriptor(keyPath: \Pattern.isDefault, ascending: false),
             NSSortDescriptor(keyPath: \Pattern.name, ascending: true)
         ],
+        predicate: NSPredicate(format: "isDefault == %@", NSNumber(value: false)),  // デフォルトパターン以外を表示
         animation: .default)
     private var patterns: FetchedResults<Pattern>
+    
+    // デフォルトパターンのFetchRequest
+    @FetchRequest(
+        entity: Pattern.entity(),
+        sortDescriptors: [NSSortDescriptor(keyPath: \Pattern.name, ascending: true)],
+        predicate: NSPredicate(format: "isDefault == %@", NSNumber(value: true)),
+        animation: .default)
+    private var defaultPatterns: FetchedResults<Pattern>
     
     // 日付選択
     @State private var selectedDate = Date()
     
     // パターン選択
     @State private var selectedPatternName: String = ""
+    @State private var selectedPatternType: String = "パターン" // "パターン" または "カスタム"
     
     // カスタム設定
     @State private var customMapping: String = ""
+    @State private var customPatternName: String = ""
+    
+    // カレンダー選択
+    @State private var selectedCalendar: EKCalendar?
+    @State private var calendars: [EKCalendar] = []
     
     // カレンダー権限アラート
     @State private var showingAuthAlert = false
@@ -62,16 +76,29 @@ struct SpecialScheduleView: View {
             
             // パターン選択セクション
             Section(header: Text("時程パターン選択")) {
-                Picker("パターン", selection: $selectedPatternName) {
-                    // CoreDataのパターン名をリスト
-                    ForEach(patterns.map { $0.name ?? "" }, id: \.self) { name in
-                        Text(name).tag(name)
-                    }
+                Picker("選択タイプ", selection: $selectedPatternType) {
+                    Text("パターン").tag("パターン")
                     Text("カスタム").tag("カスタム")
                 }
-                .pickerStyle(MenuPickerStyle())
+                .pickerStyle(SegmentedPickerStyle())
                 
-                if selectedPatternName == "カスタム" {
+                if selectedPatternType == "パターン" {
+                    Picker("パターン", selection: $selectedPatternName) {
+                        // CoreDataのパターン名をリスト
+                        ForEach(patterns.map { $0.name ?? "" }, id: \.self) { name in
+                            Text(name).tag(name)
+                        }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                    
+                    if selectedPatternName.isEmpty && patterns.count > 0 {
+                        Text("パターンを選択してください")
+                            .foregroundColor(.secondary)
+                    }
+                } else if selectedPatternType == "カスタム" {
+                    TextField("カスタムパターン名", text: $customPatternName)
+                        .font(.system(.body, design: .default))
+                    
                     TextField("カスタム設定 (例: 月12345 → 月123金45)", text: $customMapping)
                         .font(.system(.body, design: .monospaced))
                     
@@ -85,6 +112,17 @@ struct SpecialScheduleView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+            }
+            
+            // カレンダー選択セクション
+            Section(header: Text("カレンダー選択")) {
+                Picker("カレンダー", selection: $selectedCalendar) {
+                    Text("デフォルト").tag(nil as EKCalendar?)
+                    ForEach(calendars, id: \.calendarIdentifier) { calendar in
+                        Text(calendar.title).tag(calendar as EKCalendar?)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
             }
             
             // 適用済みの特殊時程リスト
@@ -145,6 +183,8 @@ struct SpecialScheduleView: View {
             CalendarManager.shared.requestAccess { granted, error in
                 if granted {
                     loadAppliedSchedules()
+                    // 利用可能なカレンダーを取得
+                    self.calendars = CalendarManager.shared.getAvailableCalendars()
                 } else {
                     authAlertMessage = error?.localizedDescription ?? "カレンダーアクセスが拒否されました"
                     showingAuthAlert = true
@@ -252,8 +292,29 @@ struct SpecialScheduleView: View {
         isProcessing = true
         message = "特殊時程を適用中..."
         
+        // 選択されたタイプに応じてパターン名を決定
+        let patternName: String
+        if selectedPatternType == "パターン" {
+            patternName = selectedPatternName
+        } else {
+            // カスタム設定の場合は、名前と設定を結合
+            if !customPatternName.isEmpty {
+                patternName = customPatternName
+            } else {
+                patternName = "カスタム: " + customMapping
+            }
+        }
+        
+        // カスタム設定の場合は、パターン名に設定内容を含める
+        let eventPatternName: String
+        if selectedPatternType == "カスタム" && !customMapping.isEmpty {
+            eventPatternName = patternName + " (" + customMapping + ")"
+        } else {
+            eventPatternName = patternName
+        }
+        
         // カレンダーにイベントを追加
-        CalendarManager.shared.createScheduleEvent(patternName: selectedPatternName, date: selectedDate) { success, error in
+        CalendarManager.shared.createScheduleEvent(patternName: eventPatternName, date: selectedDate) { success, error in
             if success {
                 // 特殊時程パターンを適用
                 DispatchQueue.main.async {
@@ -292,7 +353,7 @@ struct SpecialScheduleView: View {
 }
 
 struct SpecialScheduleView_Previews: PreviewProvider {
-    static var previews: some View {
+    static var previews: PreviewProvider {
         NavigationView {
             SpecialScheduleView()
                 .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
