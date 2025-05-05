@@ -20,10 +20,14 @@ struct SpecialScheduleView: View {
     @State private var selectedDate = Date()
     
     // パターン選択
-    @State private var selectedPatternName: String = "通常"
+    @State private var selectedPatternName: String = ""
     
     // カスタム設定
     @State private var customMapping: String = ""
+    
+    // カレンダー権限アラート
+    @State private var showingAuthAlert = false
+    @State private var authAlertMessage = ""
     
     // 処理状態
     @State private var isProcessing = false
@@ -59,11 +63,10 @@ struct SpecialScheduleView: View {
             // パターン選択セクション
             Section(header: Text("時程パターン選択")) {
                 Picker("パターン", selection: $selectedPatternName) {
-                    Text("通常").tag("通常")
-                    Text("短縮A時程").tag("短縮A時程")
-                    Text("短縮B時程").tag("短縮B時程")
-                    Text("短縮C時程").tag("短縮C時程")
-                    Text("テスト時程").tag("テスト時程")
+                    // CoreDataのパターン名をリスト
+                    ForEach(patterns.map { $0.name ?? "" }, id: \.self) { name in
+                        Text(name).tag(name)
+                    }
                     Text("カスタム").tag("カスタム")
                 }
                 .pickerStyle(MenuPickerStyle())
@@ -138,7 +141,15 @@ struct SpecialScheduleView: View {
             }
         }
         .onAppear {
-            loadAppliedSchedules()
+            // カレンダーアクセスをリクエストし、許可後にスケジュールをロード
+            CalendarManager.shared.requestAccess { granted, error in
+                if granted {
+                    loadAppliedSchedules()
+                } else {
+                    authAlertMessage = error?.localizedDescription ?? "カレンダーアクセスが拒否されました"
+                    showingAuthAlert = true
+                }
+            }
         }
         .alert(isPresented: $showingAlert) {
             Alert(
@@ -146,6 +157,9 @@ struct SpecialScheduleView: View {
                 message: Text(alertMessage),
                 dismissButton: .default(Text("OK"))
             )
+        }
+        .alert(isPresented: $showingAuthAlert) {
+            Alert(title: Text("権限エラー"), message: Text(authAlertMessage), dismissButton: .default(Text("OK")))
         }
     }
     

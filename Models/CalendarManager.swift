@@ -8,6 +8,8 @@ class CalendarManager {
     static let shared = CalendarManager()
     // カレンダー認証状態
     private(set) var authorizationStatus: EKAuthorizationStatus = .notDetermined
+    // アクセス権の有無
+    private var hasAccess: Bool = false
     
     private init() {
         // 初期化時に現在の認証状態を取得
@@ -28,6 +30,7 @@ class CalendarManager {
                     let granted = try await eventStore.requestFullAccessToEvents()
                     DispatchQueue.main.async {
                         self.updateAuthorizationStatus()
+                        self.hasAccess = granted
                         completion(granted, nil)
                     }
                 } catch {
@@ -40,6 +43,7 @@ class CalendarManager {
             eventStore.requestAccess(to: .event) { [weak self] (granted, error) in
                 DispatchQueue.main.async {
                     self?.updateAuthorizationStatus()
+                    self?.hasAccess = granted
                     completion(granted, error)
                 }
             }
@@ -48,26 +52,29 @@ class CalendarManager {
     
     // 指定した日付のカレンダーイベントを取得
     func fetchEvents(for date: Date, completion: @escaping ([EKEvent]?, Error?) -> Void) {
-        // アクセス権のチェック
-        if authorizationStatus != .authorized && authorizationStatus != .fullAccess {
-            completion(nil, NSError(domain: "CalendarManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "カレンダーへのアクセスが許可されていません"]))
-            return
+        // アクセス権をチェック
+        if hasAccess {
+            let events = fetchEventsSync(for: date)
+            completion(events, nil)
+        } else {
+            requestAccess { granted, error in
+                if granted {
+                    let events = self.fetchEventsSync(for: date)
+                    completion(events, nil)
+                } else {
+                    completion(nil, error)
+                }
+            }
         }
-        
-        // 指定した日付の開始と終了を設定
+    }
+    
+    // 同期的にイベントを取得する内部関数
+    private func fetchEventsSync(for date: Date) -> [EKEvent] {
         let calendar = Calendar.current
-        guard let startDate = calendar.date(bySettingHour: 0, minute: 0, second: 0, of: date),
-              let endDate = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: date) else {
-            completion(nil, NSError(domain: "CalendarManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "日付の範囲設定に失敗しました"]))
-            return
-        }
-        
-        // 検索条件を設定
+        let startDate = calendar.startOfDay(for: date)
+        let endDate = calendar.date(byAdding: .day, value: 1, to: startDate)!
         let predicate = eventStore.predicateForEvents(withStart: startDate, end: endDate, calendars: nil)
-        
-        // イベントを検索
-        let events = eventStore.events(matching: predicate)
-        completion(events, nil)
+        return eventStore.events(matching: predicate)
     }
     
     // 指定した期間のカレンダーイベントを取得

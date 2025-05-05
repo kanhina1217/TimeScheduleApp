@@ -13,63 +13,45 @@ struct PatternSettingsView: View {
         animation: .default)
     private var patterns: FetchedResults<Pattern>
     
-    @State private var showingAddPatternSheet = false
-    @State private var selectedPattern: Pattern?
-    
     var body: some View {
         NavigationView {
             List {
                 ForEach(patterns, id: \.self) { pattern in
-                    Button(action: {
-                        // 時程パターンをタップして編集画面に遷移
-                        selectedPattern = pattern
-                        showingAddPatternSheet = true
-                    }) {
+                    NavigationLink(destination:
+                        PatternDetailView(pattern: pattern)
+                            .environment(\.managedObjectContext, viewContext)
+                    ) {
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(pattern.name ?? "不明なパターン")
                                     .font(.headline)
-                                    .foregroundColor(.primary)
-                                
                                 if pattern.isDefault {
                                     Text("デフォルト")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
                             }
-                            
                             Spacer()
-                            
-                            // 時限数
                             Text("\(pattern.periodCount)時限")
                                 .font(.subheadline)
                                 .foregroundColor(.gray)
-                            
                             Image(systemName: "chevron.right")
                                 .foregroundColor(.gray)
                                 .font(.caption)
                         }
-                        .contentShape(Rectangle())
                     }
                 }
                 .onDelete(perform: deletePatterns)
             }
             .navigationTitle("時程パターン")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        // 新規作成時はnilを設定
-                        selectedPattern = nil
-                        showingAddPatternSheet = true
-                    }) {
-                        Image(systemName: "plus")
-                    }
+            .navigationBarItems(trailing:
+                NavigationLink(destination:
+                    PatternDetailView(pattern: nil)
+                        .environment(\.managedObjectContext, viewContext)
+                ) {
+                    Image(systemName: "plus")
                 }
-            }
-            .sheet(isPresented: $showingAddPatternSheet) {
-                PatternDetailView(pattern: selectedPattern)
-                    .environment(\.managedObjectContext, viewContext)
-            }
+            )
         }
     }
     
@@ -107,6 +89,8 @@ struct PatternDetailView: View {
         ["period": "5", "startTime": "13:20", "endTime": "14:10"],
         ["period": "6", "startTime": "14:20", "endTime": "15:10"]
     ]
+    @State private var startTimes: [Date] = []
+    @State private var endTimes: [Date] = []
     
     init(pattern: Pattern?) {
         self.existingPattern = pattern
@@ -127,28 +111,27 @@ struct PatternDetailView: View {
                 }
                 
                 Section(header: Text("時限設定")) {
-                    ForEach(0..<periodTimes.count, id: \.self) { index in
+                    ForEach(0..<startTimes.count, id: \.self) { index in
                         HStack {
                             Text("\(index + 1)限")
                                 .font(.headline)
                                 .frame(width: 40)
                             
-                            TextField("開始", text: Binding(
-                                get: { periodTimes[index]["startTime"] ?? "" },
-                                set: { periodTimes[index]["startTime"] = $0 }
-                            ))
-                            .keyboardType(.numbersAndPunctuation)
+                            DatePicker("", selection: Binding(
+                                get: { startTimes[index] },
+                                set: { startTimes[index] = $0 }
+                            ), displayedComponents: .hourAndMinute)
+                            .labelsHidden()
                             
                             Text("-")
                             
-                            TextField("終了", text: Binding(
-                                get: { periodTimes[index]["endTime"] ?? "" },
-                                set: { periodTimes[index]["endTime"] = $0 }
-                            ))
-                            .keyboardType(.numbersAndPunctuation)
+                            DatePicker("", selection: Binding(
+                                get: { endTimes[index] },
+                                set: { endTimes[index] = $0 }
+                            ), displayedComponents: .hourAndMinute)
+                            .labelsHidden()
                             
-                            // 削除ボタン追加
-                            if periodTimes.count > 1 {
+                            if startTimes.count > 1 {
                                 Button(action: {
                                     removePeriod(at: index)
                                 }) {
@@ -191,18 +174,16 @@ struct PatternDetailView: View {
     
     // 新しい時限を追加
     private func addPeriod() {
-        let newIndex = periodTimes.count + 1
-        let newPeriod = [
-            "period": "\(newIndex)",
-            "startTime": "00:00",
-            "endTime": "00:00"
-        ]
-        periodTimes.append(newPeriod)
+        let newIndex = startTimes.count + 1
+        let now = Date()
+        startTimes.append(Calendar.current.date(bySettingHour: Calendar.current.component(.hour, from: now), minute: 0, second: 0, of: now) ?? now)
+        endTimes.append(Calendar.current.date(bySettingHour: Calendar.current.component(.hour, from: now) + 1, minute: 0, second: 0, of: now) ?? now)
     }
     
     // 時限を削除
     private func removePeriod(at index: Int) {
-        periodTimes.remove(at: index)
+        startTimes.remove(at: index)
+        endTimes.remove(at: index)
     }
     
     // パターンデータの読み込み
@@ -222,8 +203,11 @@ struct PatternDetailView: View {
                 }
             }
             
-            // 既存パターンの曜日設定を解析（将来のデータ形式との互換性のため）
-            // 現時点では特に保存されていないので、デフォルト値を使用
+            // DatePicker用のDate配列を初期化
+            let formatter = DateFormatter()
+            formatter.dateFormat = "H:mm"
+            startTimes = periodTimes.compactMap { formatter.date(from: $0["startTime"] ?? "") }
+            endTimes = periodTimes.compactMap { formatter.date(from: $0["endTime"] ?? "") }
         }
     }
     
@@ -238,7 +222,17 @@ struct PatternDetailView: View {
             
             pattern.name = patternName
             pattern.isDefault = isDefault
-            pattern.periodTimes = periodTimes as NSObject
+            
+            // パターンを保存する前に文字列に変換
+            let formatter = DateFormatter()
+            formatter.dateFormat = "H:mm"
+            var timesArray: [[String: String]] = []
+            for i in 0..<startTimes.count {
+                let start = formatter.string(from: startTimes[i])
+                let end = formatter.string(from: endTimes[i])
+                timesArray.append(["period": "\(i+1)", "startTime": start, "endTime": end])
+            }
+            pattern.periodTimes = timesArray as NSObject
             
             // 曜日設定は今後のバージョンで使用するためのみに保存
             // 実際の使用曜日は別の場所で管理する可能性がある
