@@ -147,6 +147,66 @@ struct PatternPickerView: View {
     }
 }
 
+// 1コマ分の行（1時限の5日分セル）を表示するビュー
+struct CellRowView: View {
+    let period: Int
+    let selectedPattern: Pattern?
+    let specialTimetables: [NSManagedObject]
+    let isSpecialMode: Bool
+    let timetables: FetchedResults<Timetable>
+    let convertWeekdayIndexToCoreDataDay: (Int) -> Int
+    let onTap: (Int, Timetable?) -> Void
+    
+    var body: some View {
+        HStack {
+            // 時限情報
+            PeriodInfoView(period: period, pattern: selectedPattern)
+            
+            // 曜日ごとのセル
+            ForEach(0..<5, id: \.self) { dayIndex in
+                let timetable = getTimetableForCell(dayIndex: dayIndex, period: Int16(period))
+                TimetableCellView(timetable: timetable) {
+                    onTap(dayIndex, timetable)
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+    
+    // セル用の時間割データを取得（通常or特殊）
+    private func getTimetableForCell(dayIndex: Int, period: Int16) -> Timetable? {
+        if isSpecialMode && !specialTimetables.isEmpty {
+            // 特殊時程データから該当するコマを探す
+            let coreDataDay = convertWeekdayIndexToCoreDataDay(dayIndex)
+            
+            // 特殊時程のデータから該当するコマを探す
+            for specialData in specialTimetables {
+                if let day = specialData.value(forKey: "dayOfWeek") as? Int16,
+                   let p = specialData.value(forKey: "period") as? Int16,
+                   day == coreDataDay && p == period {
+                    
+                    // NSManagedObjectをTimetableにキャスト
+                    return specialData as? Timetable
+                }
+            }
+            return nil
+        } else {
+            // 通常の時間割データを取得
+            return fetchTimetable(for: dayIndex, period: period)
+        }
+    }
+    
+    // 時間割データを取得
+    private func fetchTimetable(for day: Int, period: Int16) -> Timetable? {
+        // 新しいインデックス（月曜=0）からCoreData形式（日曜=0）に変換
+        let coreDataDay = convertWeekdayIndexToCoreDataDay(day)
+        let filtered = timetables.filter { timetable in
+            return timetable.dayOfWeek == coreDataDay && timetable.period == period
+        }
+        return filtered.first
+    }
+}
+
 // メインビュー
 struct MainView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -330,66 +390,6 @@ struct MainView: View {
             ForEach(1...maxPeriods, id: \.self) { periodNum in
                 periodRowView(period: periodNum)
             }
-        }
-    }
-
-    // 1コマ分の行（1時限の5日分セル）を表示するビュー
-    private struct CellRowView: View {
-        let period: Int
-        let selectedPattern: Pattern?
-        let specialTimetables: [NSManagedObject]
-        let isSpecialMode: Bool
-        let timetables: FetchedResults<Timetable>
-        let convertWeekdayIndexToCoreDataDay: (Int) -> Int
-        let onTap: (Int, Timetable?) -> Void
-        
-        var body: some View {
-            HStack {
-                // 時限情報
-                PeriodInfoView(period: period, pattern: selectedPattern)
-                
-                // 曜日ごとのセル
-                ForEach(0..<5, id: \.self) { dayIndex in
-                    let timetable = getTimetableForCell(dayIndex: dayIndex, period: Int16(period))
-                    TimetableCellView(timetable: timetable) {
-                        onTap(dayIndex, timetable)
-                    }
-                }
-            }
-            .padding(.horizontal)
-        }
-        
-        // セル用の時間割データを取得（通常or特殊）
-        private func getTimetableForCell(dayIndex: Int, period: Int16) -> Timetable? {
-            if isSpecialMode && !specialTimetables.isEmpty {
-                // 特殊時程データから該当するコマを探す
-                let coreDataDay = convertWeekdayIndexToCoreDataDay(dayIndex)
-                
-                // 特殊時程のデータから該当するコマを探す
-                for specialData in specialTimetables {
-                    if let day = specialData.value(forKey: "dayOfWeek") as? Int16,
-                       let p = specialData.value(forKey: "period") as? Int16,
-                       day == coreDataDay && p == period {
-                        
-                        // NSManagedObjectをTimetableにキャスト
-                        return specialData as? Timetable
-                    }
-                }
-                return nil
-            } else {
-                // 通常の時間割データを取得
-                return fetchTimetable(for: dayIndex, period: period)
-            }
-        }
-        
-        // 時間割データを取得
-        private func fetchTimetable(for day: Int, period: Int16) -> Timetable? {
-            // 新しいインデックス（月曜=0）からCoreData形式（日曜=0）に変換
-            let coreDataDay = convertWeekdayIndexToCoreDataDay(day)
-            let filtered = timetables.filter { timetable in
-                return timetable.dayOfWeek == coreDataDay && timetable.period == period
-            }
-            return filtered.first
         }
     }
 

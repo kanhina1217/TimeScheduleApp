@@ -9,7 +9,7 @@ import SwiftUI
 import EventKit
 import CoreData
 
-struct MainView: View {
+struct WelcomeView: View {
     @State private var showingContinueAlert = false
     @State private var isProcessing = false
     @State private var processingMessage = ""
@@ -211,7 +211,7 @@ struct MainView: View {
     }
 }
 
-struct SpecialScheduleView: View {
+struct CalendarOverviewView: View {
     var body: some View {
         Text("カレンダー画面")
     }
@@ -220,12 +220,12 @@ struct SpecialScheduleView: View {
 struct ContentView: View {
     var body: some View {
         TabView {
-            MainView()
+            WelcomeView()
                 .tabItem {
                     Label("時間割", systemImage: "calendar")
                 }
 
-            SpecialScheduleView()
+            CalendarOverviewView()
                 .tabItem {
                     Label("カレンダー", systemImage: "calendar.badge.clock")
                 }

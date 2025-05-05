@@ -39,115 +39,113 @@ struct SpecialScheduleView: View {
     private let dayNames = ["日", "月", "火", "水", "木", "金", "土"]
     
     var body: some View {
-        NavigationView {
-            Form {
-                // 日付選択セクション
-                Section(header: Text("日付選択")) {
-                    DatePicker(
-                        "日付",
-                        selection: $selectedDate,
-                        displayedComponents: [.date]
-                    )
-                    .datePickerStyle(GraphicalDatePickerStyle())
+        Form {
+            // 日付選択セクション
+            Section(header: Text("日付選択")) {
+                DatePicker(
+                    "日付",
+                    selection: $selectedDate,
+                    displayedComponents: [.date]
+                )
+                .datePickerStyle(GraphicalDatePickerStyle())
+                
+                // 曜日表示
+                let calendar = Calendar.current
+                let weekday = calendar.component(.weekday, from: selectedDate) - 1
+                Text("選択日: \(dayNames[weekday])曜日")
+                    .foregroundColor(.secondary)
+            }
+            
+            // パターン選択セクション
+            Section(header: Text("時程パターン選択")) {
+                Picker("パターン", selection: $selectedPatternName) {
+                    Text("通常").tag("通常")
+                    Text("短縮A時程").tag("短縮A時程")
+                    Text("短縮B時程").tag("短縮B時程")
+                    Text("短縮C時程").tag("短縮C時程")
+                    Text("テスト時程").tag("テスト時程")
+                    Text("カスタム").tag("カスタム")
+                }
+                .pickerStyle(MenuPickerStyle())
+                
+                if selectedPatternName == "カスタム" {
+                    TextField("カスタム設定 (例: 月12345 → 月123金45)", text: $customMapping)
+                        .font(.system(.body, design: .monospaced))
                     
-                    // 曜日表示
-                    let calendar = Calendar.current
-                    let weekday = calendar.component(.weekday, from: selectedDate) - 1
-                    Text("選択日: \(dayNames[weekday])曜日")
+                    Text("書式: 元曜日+時限 → 先曜日+時限")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("例1: 月12345 → 月123水45 (月曜1-5限を月曜1-3限と水曜4-5限に配置)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("例2: 金12345 → 金1234 (金曜の5限を省略)")
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
-                // パターン選択セクション
-                Section(header: Text("時程パターン選択")) {
-                    Picker("パターン", selection: $selectedPatternName) {
-                        Text("通常").tag("通常")
-                        Text("短縮A時程").tag("短縮A時程")
-                        Text("短縮B時程").tag("短縮B時程")
-                        Text("短縮C時程").tag("短縮C時程")
-                        Text("テスト時程").tag("テスト時程")
-                        Text("カスタム").tag("カスタム")
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                    
-                    if selectedPatternName == "カスタム" {
-                        TextField("カスタム設定 (例: 月12345 → 月123金45)", text: $customMapping)
-                            .font(.system(.body, design: .monospaced))
-                        
-                        Text("書式: 元曜日+時限 → 先曜日+時限")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("例1: 月12345 → 月123水45 (月曜1-5限を月曜1-3限と水曜4-5限に配置)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("例2: 金12345 → 金1234 (金曜の5限を省略)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                // 適用済みの特殊時程リスト
-                Section(header: Text("適用済みの特殊時程")) {
-                    if appliedSchedules.isEmpty {
-                        Text("適用済みの特殊時程はありません")
-                            .foregroundColor(.secondary)
-                    } else {
-                        List {
-                            ForEach(appliedSchedules, id: \.date) { schedule in
-                                VStack(alignment: .leading) {
-                                    Text(schedule.date)
-                                        .font(.headline)
-                                    Text(schedule.patternName)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
+            }
+            
+            // 適用済みの特殊時程リスト
+            Section(header: Text("適用済みの特殊時程")) {
+                if appliedSchedules.isEmpty {
+                    Text("適用済みの特殊時程はありません")
+                        .foregroundColor(.secondary)
+                } else {
+                    List {
+                        ForEach(appliedSchedules, id: \.date) { schedule in
+                            VStack(alignment: .leading) {
+                                Text(schedule.date)
+                                    .font(.headline)
+                                Text(schedule.patternName)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
-                            .onDelete(perform: deleteSpecialSchedule)
                         }
+                        .onDelete(perform: deleteSpecialSchedule)
                     }
                 }
+            }
+            
+            // 操作ボタン
+            Section {
+                Button(action: applySpecialSchedule) {
+                    HStack {
+                        Spacer()
+                        Text("特殊時程を適用")
+                            .bold()
+                        Spacer()
+                    }
+                }
+                .disabled(isProcessing)
                 
-                // 操作ボタン
-                Section {
-                    Button(action: applySpecialSchedule) {
-                        HStack {
-                            Spacer()
-                            Text("特殊時程を適用")
-                                .bold()
-                            Spacer()
-                        }
-                    }
-                    .disabled(isProcessing)
-                    
-                    if isProcessing {
-                        HStack {
-                            Spacer()
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle())
-                            Text(message)
-                                .padding(.leading, 10)
-                            Spacer()
-                        }
+                if isProcessing {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                        Text(message)
+                            .padding(.leading, 10)
+                        Spacer()
                     }
                 }
             }
-            .navigationTitle("特殊時程設定")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: refreshSchedules) {
-                        Label("更新", systemImage: "arrow.clockwise")
-                    }
+        }
+        .navigationTitle("特殊時程設定")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: refreshSchedules) {
+                    Label("更新", systemImage: "arrow.clockwise")
                 }
             }
-            .onAppear {
-                loadAppliedSchedules()
-            }
-            .alert(isPresented: $showingAlert) {
-                Alert(
-                    title: Text(alertTitle),
-                    message: Text(alertMessage),
-                    dismissButton: .default(Text("OK"))
-                )
-            }
+        }
+        .onAppear {
+            loadAppliedSchedules()
+        }
+        .alert(isPresented: $showingAlert) {
+            Alert(
+                title: Text(alertTitle),
+                message: Text(alertMessage),
+                dismissButton: .default(Text("OK"))
+            )
         }
     }
     
@@ -281,7 +279,9 @@ struct SpecialScheduleView: View {
 
 struct SpecialScheduleView_Previews: PreviewProvider {
     static var previews: some View {
-        SpecialScheduleView()
-            .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+        NavigationView {
+            SpecialScheduleView()
+                .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+        }
     }
 }

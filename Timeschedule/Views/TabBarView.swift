@@ -8,7 +8,7 @@ struct TabBarView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             // 時間割タブ
-            NavigationView {
+            NavigationStack {
                 MainView()
                     .environment(\.managedObjectContext, viewContext)
             }
@@ -16,7 +16,7 @@ struct TabBarView: View {
             .tag(0)
 
             // カレンダータブ（特殊時程設定）
-            NavigationView {
+            NavigationStack {
                 SpecialScheduleView()
                     .environment(\.managedObjectContext, viewContext)
             }
