@@ -96,9 +96,9 @@ struct TodayScheduleCard: View {
         // 曜日を取得 (1=日曜日, 2=月曜日, ...)
         let calendar = Calendar.current
         let weekday = calendar.component(.weekday, from: date)
-        // 日本の曜日に変換（月曜日=0）
-        // 月曜(2)→0, 火曜(3)→1, ..., 日曜(1)→6
-        let japaneseWeekday = weekday == 1 ? 6 : weekday - 2
+        // 日本の曜日に変換（月曜日=1）
+        // 月曜(2)→1, 火曜(3)→2, ..., 日曜(1)→7
+        let japaneseWeekday = weekday == 1 ? 7 : weekday - 1
         
         // 当日の時間割を取得
         _timetables = FetchRequest(
