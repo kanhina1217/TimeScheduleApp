@@ -1,6 +1,7 @@
 import Foundation
 import EventKit
 import CoreData
+import SwiftUI // UIKitのTaskと区別するため
 
 struct SpecialScheduleInfo {
     let date: Date
@@ -33,8 +34,8 @@ class CalendarManager {
     func requestAccess(completion: @escaping (Bool, Error?) -> Void) {
         // iOS 17以降と以前で異なる処理
         if #available(iOS 17.0, *) {
-            // 単純なTaskクロージャを使用
-            Task {
+            // 明示的にSwiftConcurrencyのTaskを使用
+            SwiftUI.Task {
                 do {
                     // Use requestFullAccessToEvents for iOS 17+
                     let granted = try await eventStore.requestFullAccessToEvents()
