@@ -33,11 +33,11 @@ class CalendarManager {
     func requestAccess(completion: @escaping (Bool, Error?) -> Void) {
         // iOS 17以降と以前で異なる処理
         if #available(iOS 17.0, *) {
-            // 明示的にSwiftの名前空間からTaskを参照
-            Swift.Task {
+            // 非同期APIを使用するための標準的なアプローチ
+            DispatchQueue.global().async {
                 do {
                     // Use requestFullAccessToEvents for iOS 17+
-                    let granted = try await eventStore.requestFullAccessToEvents()
+                    let granted = try self.eventStore.requestFullAccessToEvents()
                     DispatchQueue.main.async {
                         self.hasAccess = granted
                         completion(granted, nil)

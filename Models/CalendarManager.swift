@@ -25,9 +25,9 @@ class CalendarManager {
     func requestAccess(completion: @escaping (Bool, Error?) -> Void) {
         // iOS 17以降と以前で異なる処理
         if #available(iOS 17.0, *) {
-            Task {
+            DispatchQueue.global().async {
                 do {
-                    let granted = try await eventStore.requestFullAccessToEvents()
+                    let granted = try self.eventStore.requestFullAccessToEvents()
                     DispatchQueue.main.async {
                         self.updateAuthorizationStatus()
                         self.hasAccess = granted
