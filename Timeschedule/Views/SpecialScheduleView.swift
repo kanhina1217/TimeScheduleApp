@@ -404,7 +404,7 @@ struct SpecialScheduleView: View {
 }
 
 struct SpecialScheduleView_Previews: PreviewProvider {
-    static var previews: PreviewProvider {
+    static var previews: some View {
         NavigationView {
             SpecialScheduleView()
                 .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
