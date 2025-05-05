@@ -223,7 +223,11 @@ struct TodayScheduleCard: View {
     // 指定した限数の時間割を取得（特殊時程用）
     private func findSpecialTimetable(forPeriod: Int) -> Timetable? {
         return specialTimetables.first { 
-            ($0 as? Timetable)?.period == forPeriod 
+            if let timetable = $0 as? Timetable {
+                // periodプロパティを安全に比較
+                return Int(timetable.period) == forPeriod 
+            }
+            return false
         } as? Timetable
     }
     
