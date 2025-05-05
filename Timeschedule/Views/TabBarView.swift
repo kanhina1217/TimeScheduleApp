@@ -7,13 +7,21 @@ struct TabBarView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
+            // ホームタブ（今日と明日の予定）
+            NavigationStack {
+                HomeView()
+                    .environment(\.managedObjectContext, viewContext)
+            }
+            .tabItem { Label("ホーム", systemImage: "house") }
+            .tag(0)
+            
             // 時間割タブ
             NavigationStack {
                 MainView()
                     .environment(\.managedObjectContext, viewContext)
             }
             .tabItem { Label("時間割", systemImage: "calendar") }
-            .tag(0)
+            .tag(1)
 
             // カレンダータブ（特殊時程設定）
             NavigationStack {
@@ -21,7 +29,7 @@ struct TabBarView: View {
                     .environment(\.managedObjectContext, viewContext)
             }
             .tabItem { Label("カレンダー", systemImage: "calendar.badge.clock") }
-            .tag(1)
+            .tag(2)
         }
         .onAppear {
             let appearance = UITabBarAppearance()
