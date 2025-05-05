@@ -144,57 +144,54 @@ class SpecialScheduleManager {
     
     // カスタム時程の設定を解析
     private func parseCustomConfig(patternName: String, forWeekday: Int) -> [PeriodReorderConfig] {
-        // パターン名から並べ替え設定を抽出
+        print("parseCustomConfig: 解析開始 - パターン名: \(patternName), 曜日: \(forWeekday)")
+        
+        // 単純に曜日と時限の組み合わせを解析
+        let parts = parseMultiDayAndPeriods(from: patternName)
+        print("parseCustomConfig: 解析された時程パーツ数: \(parts.count)")
+        
         var configs: [PeriodReorderConfig] = []
+        var currentTargetPeriod = 1  // 表示する時限は1から順番に割り当てる
         
-        // "月12345 → 月123水45" のような形式を解析
-        let customSettingPattern = ".*?(→|->).*?"
-        
-        // カスタム設定の構文解析
-        let lines = patternName.components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        
-        for line in lines {
-            let parts = line.split(separator: "→").map { $0.trimmingCharacters(in: .whitespaces) }
-            guard parts.count == 2 else { continue }
-            
-            // 変換前（左側）のパース
-            let fromParts = parseDayAndPeriods(from: parts[0])
-            
-            // 変換後（右側）のパース
-            let toParts = parseMultiDayAndPeriods(from: parts[1])
-            
-            // 有効な設定のみ追加
-            for toPart in toParts {
-                if let fromDay = fromParts.day, let fromPeriods = fromParts.periods,
-                   let toDay = toPart.day, let toPeriods = toPart.periods,
-                   fromPeriods.count == toPeriods.count {
-                    
-                    configs.append(PeriodReorderConfig(
-                        originalDay: fromDay,
-                        targetDay: toDay,
-                        originalPeriods: fromPeriods,
-                        targetPeriods: toPeriods
-                    ))
-                }
+        // 各曜日・時限の組み合わせを処理
+        for (index, part) in parts.enumerated() {
+            if let day = part.day, let periods = part.periods, !periods.isEmpty {
+                print("parseCustomConfig: パーツ[\(index)] - 曜日: \(day), 時限: \(periods)")
+                
+                // 元の曜日と時限をそのまま特殊時程の配置先にマッピング
+                configs.append(PeriodReorderConfig(
+                    originalDay: day,            // 元の曜日
+                    targetDay: forWeekday,       // 配置先は現在の曜日
+                    originalPeriods: periods,    // 元の時限
+                    targetPeriods: Array(currentTargetPeriod...(currentTargetPeriod + periods.count - 1))  // 1,2,3...と順番に割り当て
+                ))
+                
+                print("parseCustomConfig: 設定追加 - 元曜日: \(day), 元時限: \(periods), 先時限: \(Array(currentTargetPeriod...(currentTargetPeriod + periods.count - 1)))")
+                
+                // 次の時限開始位置を更新
+                currentTargetPeriod += periods.count
             }
         }
         
         // 設定がない場合は元の曜日のデフォルト設定を使用
         if configs.isEmpty {
+            print("parseCustomConfig: 有効な設定が見つかりませんでした。デフォルト設定を使用")
             // 文字列中に数字を探して時限として解釈する
             let periods = extractNumbers(from: patternName)
             if !periods.isEmpty {
+                print("parseCustomConfig: 見つかった時限: \(periods)")
                 configs.append(PeriodReorderConfig(
                     originalDay: forWeekday,
                     targetDay: forWeekday,
                     originalPeriods: periods,
                     targetPeriods: periods
                 ))
+            } else {
+                print("parseCustomConfig: 時限も見つかりませんでした。")
             }
         }
         
+        print("parseCustomConfig: 解析完了 - 最終設定数: \(configs.count)")
         return configs
     }
     
@@ -283,16 +280,30 @@ class SpecialScheduleManager {
     
     // 特殊時程に基づいて時間割データを適用（カスタムマッピングとベースパターン名指定版）
     func applySpecialSchedule(for date: Date, context: NSManagedObjectContext, customMapping: String? = nil, basePatternName: String? = nil) -> Bool {
+        print("applySpecialSchedule: 特殊時程を適用します - 日付: \(date), カスタムマッピング: \(customMapping ?? "なし"), ベースパターン: \(basePatternName ?? "なし")")
+        
         // カスタムマッピングが指定されている場合
         if let mapping = customMapping, !mapping.isEmpty {
+            print("applySpecialSchedule: カスタムマッピングを処理: \(mapping)")
+            
             // カスタムマッピングを解析
             let configs = parseCustomConfig(patternName: mapping, forWeekday: getWeekdayIndex(for: date))
             
             if !configs.isEmpty {
+                print("applySpecialSchedule: カスタム設定の解析に成功 - 設定数: \(configs.count)")
                 // 特殊時程の情報を臨時データとして保存
                 saveSpecialScheduleData(for: date, configs: configs, context: context)
+                
+                // デバッグ: 保存した設定内容を確認
+                let savedConfigs = getSpecialScheduleData(for: date, context: context)
+                print("applySpecialSchedule: 保存された設定数: \(savedConfigs.count)")
+                
                 return true
+            } else {
+                print("applySpecialSchedule: カスタム設定の解析結果が空です")
             }
+        } else {
+            print("applySpecialSchedule: カスタムマッピングなし")
         }
         
         // カスタムマッピングがない場合は通常の特殊時程を適用
@@ -398,19 +409,27 @@ class SpecialScheduleManager {
     
     // 特殊時程に基づいて時間割データを取得（表示用）
     func getTimetableDataForSpecialSchedule(date: Date, context: NSManagedObjectContext) -> [NSManagedObject] {
+        print("getTimetableDataForSpecialSchedule: 特殊時程の時間割データを取得 - 日付: \(date)")
+        
         // 特殊時程の設定を取得
         let configs = getSpecialScheduleData(for: date, context: context)
+        print("getTimetableDataForSpecialSchedule: 取得した設定数: \(configs.count)")
+        
         if configs.isEmpty {
             // 特殊時程がなければ通常のデータを返す
+            print("getTimetableDataForSpecialSchedule: 特殊時程の設定がありません")
             return fetchRegularTimetableData(context: context)
         }
         
         // 特殊時程に基づいて時間割を再構成
         var result: [NSManagedObject] = []
         
-        for config in configs {
+        for (index, config) in configs.enumerated() {
+            print("getTimetableDataForSpecialSchedule: 設定[\(index)]を処理 - 元曜日: \(config.originalDay), 先曜日: \(config.targetDay)")
+            
             // 元の曜日のデータを取得
             let originalTimetables = fetchTimetableData(for: config.originalDay, context: context)
+            print("getTimetableDataForSpecialSchedule: 元曜日の時間割数: \(originalTimetables.count)")
             
             // 各時限ごとに特殊時程用のデータを作成
             for i in 0..<config.originalPeriods.count {
@@ -418,6 +437,8 @@ class SpecialScheduleManager {
                 
                 let originalPeriod = config.originalPeriods[i]
                 let targetPeriod = config.targetPeriods[i]
+                
+                print("getTimetableDataForSpecialSchedule: 時限マッピング - 元: \(originalPeriod) → 先: \(targetPeriod)")
                 
                 // 元の時限のデータを探す
                 if let originalData = originalTimetables.first(where: { $0.value(forKey: "period") as? Int16 == Int16(originalPeriod) }) {
@@ -430,10 +451,14 @@ class SpecialScheduleManager {
                     )
                     
                     result.append(specialTimetable)
+                    print("getTimetableDataForSpecialSchedule: 時間割データを追加 - 科目: \(originalData.value(forKey: "subjectName") ?? "未設定")")
+                } else {
+                    print("getTimetableDataForSpecialSchedule: 元時限のデータが見つかりません - 曜日: \(config.originalDay), 時限: \(originalPeriod)")
                 }
             }
         }
         
+        print("getTimetableDataForSpecialSchedule: 結果の時間割数: \(result.count)")
         return result
     }
     

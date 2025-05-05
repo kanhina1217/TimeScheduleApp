@@ -125,16 +125,16 @@ struct SpecialScheduleView: View {
                         .toggleStyle(SwitchToggleStyle())
                     
                     if useCustomMapping {
-                        TextField("カスタム設定 (例: 月12345 → 月123金45)", text: $customMapping)
+                        TextField("カスタム設定 (例: 月123火45)", text: $customMapping)
                             .font(.system(.body, design: .monospaced))
                         
-                        Text("書式: 元曜日+時限 → 先曜日+時限")
+                        Text("書式: 曜日+時限の組み合わせで入力")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text("例1: 月12345 → 月123水45 (月曜1-5限を月曜1-3限と水曜4-5限に配置)")
+                        Text("例: 月123火45 (月曜1-3限と火曜4-5限を順番に配置)")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text("例2: 金12345 → 金1234 (金曜の5限を省略)")
+                        Text("例: 水12345 (水曜の1-5限を順番に配置)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }

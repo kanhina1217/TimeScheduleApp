@@ -171,6 +171,9 @@ struct TodayScheduleCard: View {
     
     // 特殊時程の確認
     func checkSpecialSchedule() {
+        // デバッグ情報を出力
+        print("TodayScheduleCard: 特殊時程の確認開始 - 日付: \(date)")
+        
         // 環境オブジェクトからContext取得
         let context = PersistenceController.shared.container.viewContext
         
@@ -178,17 +181,27 @@ struct TodayScheduleCard: View {
         if let specialSchedule = CalendarManager.shared.getSpecialScheduleForDate(date) {
             // パターン名を設定
             patternName = specialSchedule.patternName
-            
-            // 特殊時程の時間割データを取得
-            specialTimetables = SpecialScheduleManager.shared.getTimetableDataForSpecialSchedule(date: date, context: context)
+            print("TodayScheduleCard: 特殊時程を検出 - パターン名: \(patternName)")
             
             // 特殊時程の設定情報を取得（元の時程情報を表示するため）
             specialScheduleConfigs = SpecialScheduleManager.shared.getSpecialScheduleData(for: date, context: context)
+            print("TodayScheduleCard: 特殊時程設定を取得 - 設定数: \(specialScheduleConfigs.count)")
+            
+            // 特殊時程の時間割データを取得
+            specialTimetables = SpecialScheduleManager.shared.getTimetableDataForSpecialSchedule(date: date, context: context)
+            print("TodayScheduleCard: 特殊時程の時間割を取得 - 時間割数: \(specialTimetables.count)")
             
             // ベースとなるパターンを取得
             basePattern = findDefaultPattern()
             
+            // 特殊時程があれば、フラグを設定
             isSpecialSchedule = !specialTimetables.isEmpty
+            print("TodayScheduleCard: 特殊時程フラグを設定 - isSpecialSchedule: \(isSpecialSchedule)")
+            
+            // スペシャルスケジュールの設定内容をデバッグ出力
+            for (index, config) in specialScheduleConfigs.enumerated() {
+                print("特殊時程設定[\(index)]: 元曜日=\(config.originalDay), 先曜日=\(config.targetDay), 元時限=\(config.originalPeriods), 先時限=\(config.targetPeriods)")
+            }
         } else {
             // 特殊時程がなければデフォルトパターンの名前を表示
             let fetchRequest: NSFetchRequest<Pattern> = Pattern.fetchRequest()
@@ -212,6 +225,7 @@ struct TodayScheduleCard: View {
             
             // 特殊時程フラグをリセット
             isSpecialSchedule = false
+            print("TodayScheduleCard: 特殊時程なし - 通常時程を表示")
         }
     }
     
@@ -222,13 +236,25 @@ struct TodayScheduleCard: View {
     
     // 指定した限数の時間割を取得（特殊時程用）
     private func findSpecialTimetable(forPeriod: Int) -> Timetable? {
-        return specialTimetables.first { 
-            if let timetable = $0 as? Timetable {
-                // periodプロパティを安全に比較
-                return Int(timetable.period) == forPeriod 
+        print("findSpecialTimetable: 時限 \(forPeriod) の特殊時程時間割を探索中")
+        
+        // 特殊時程の時間割の中から指定された時限のものを探す
+        for (index, timetable) in specialTimetables.enumerated() {
+            if let timetableObj = timetable as? Timetable {
+                print("findSpecialTimetable: 候補[\(index)] - 時限: \(timetableObj.period), 曜日: \(timetableObj.dayOfWeek), 科目: \(timetableObj.subjectName ?? "未設定")")
+                
+                // Int型に変換して比較
+                if Int(timetableObj.period) == forPeriod {
+                    print("findSpecialTimetable: 時限 \(forPeriod) に一致する時間割を発見 - 科目: \(timetableObj.subjectName ?? "未設定")")
+                    return timetableObj
+                }
+            } else {
+                print("findSpecialTimetable: 候補[\(index)] はTimetable型に変換できません")
             }
-            return false
-        } as? Timetable
+        }
+        
+        print("findSpecialTimetable: 時限 \(forPeriod) に一致する時間割なし")
+        return nil
     }
     
     // 元の時程情報を取得（特殊時程用）
