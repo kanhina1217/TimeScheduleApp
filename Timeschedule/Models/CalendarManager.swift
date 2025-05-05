@@ -33,8 +33,8 @@ class CalendarManager {
     func requestAccess(completion: @escaping (Bool, Error?) -> Void) {
         // iOS 17以降と以前で異なる処理
         if #available(iOS 17.0, *) {
-            // _Concurrency.Task を使用して名前衝突を回避
-            _Concurrency.Task { // Changed Task to _Concurrency.Task
+            // Task initializer構文でスレッド管理を明示的に記述
+            Task(priority: .userInitiated) {
                 do {
                     // Use requestFullAccessToEvents for iOS 17+
                     let granted = try await eventStore.requestFullAccessToEvents()
