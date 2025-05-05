@@ -8,6 +8,7 @@
 import SwiftUI
 import EventKit
 import CoreData
+import UIKit
 
 struct WelcomeView: View {
     @State private var showingContinueAlert = false
@@ -15,6 +16,7 @@ struct WelcomeView: View {
     @State private var processingMessage = ""
     @State private var calendarAccessGranted = false
     @State private var selectedPattern: NSManagedObject? = nil
+    @State private var showSettingsAlert = false
     
     var body: some View {
         NavigationView {
@@ -102,6 +104,16 @@ struct WelcomeView: View {
             } message: {
                 Text("カレンダーのチェックと時程パターンの適用を行います。この処理には時間がかかる場合があります。")
             }
+            .alert("カレンダーへのアクセス", isPresented: $showSettingsAlert) {
+                Button("設定を開く") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("キャンセル", role: .cancel) {}
+            } message: {
+                Text("このアプリは特殊時程管理のためにカレンダーへのアクセスが必要です。「設定」アプリからアクセス権を許可してください。")
+            }
         }
     }
     
@@ -148,6 +160,9 @@ struct WelcomeView: View {
                     processingMessage = "エラー: \(error.localizedDescription)"
                 } else {
                     processingMessage = "カレンダーへのアクセスが拒否されました。"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        self.showSettingsAlert = true
+                    }
                 }
             }
         }
