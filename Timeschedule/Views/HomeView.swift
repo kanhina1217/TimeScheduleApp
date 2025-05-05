@@ -169,16 +169,14 @@ struct TodayScheduleCard: View {
         }
     }
     
-    // 特殊時程の確認（実際の実装では、カレンダーから取得する）
+    // 特殊時程の確認
     func checkSpecialSchedule() {
-        // TODO: CalendarManagerから特殊時程を取得する
-        // サンプルとして、曜日によってパターンを変える
-        let calendar = Calendar.current
-        let weekday = calendar.component(.weekday, from: date)
-        
-        if weekday == 3 { // 水曜日
-            patternName = "短縮時程"
+        // カレンダーから特殊時程を取得
+        if let specialSchedule = CalendarManager.shared.getSpecialScheduleForDate(date) {
+            // パターン名を設定
+            patternName = specialSchedule.patternName
         } else {
+            // 特殊時程がなければ通常時程
             patternName = "通常時程"
         }
     }
