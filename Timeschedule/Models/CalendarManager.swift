@@ -33,8 +33,8 @@ class CalendarManager {
     func requestAccess(completion: @escaping (Bool, Error?) -> Void) {
         // iOS 17以降と以前で異なる処理
         if #available(iOS 17.0, *) {
-            // Task initializer構文でスレッド管理を明示的に記述
-            Task(priority: .userInitiated) {
+            // 単純なTaskクロージャを使用
+            Task {
                 do {
                     // Use requestFullAccessToEvents for iOS 17+
                     let granted = try await eventStore.requestFullAccessToEvents()
