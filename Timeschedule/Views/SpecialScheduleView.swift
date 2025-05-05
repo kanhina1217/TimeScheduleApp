@@ -6,13 +6,13 @@ struct SpecialScheduleView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.presentationMode) var presentationMode
     
-    // パターンのFetchRequest
+    // パターンのFetchRequest（デフォルト以外）
     @FetchRequest(
         entity: Pattern.entity(),
         sortDescriptors: [
             NSSortDescriptor(keyPath: \Pattern.name, ascending: true)
         ],
-        predicate: NSPredicate(format: "isDefault == %@", NSNumber(value: false)),  // デフォルトパターン以外を表示
+        predicate: NSPredicate(format: "isDefault == %@", NSNumber(value: false)),
         animation: .default)
     private var patterns: FetchedResults<Pattern>
     
@@ -24,6 +24,16 @@ struct SpecialScheduleView: View {
         animation: .default)
     private var defaultPatterns: FetchedResults<Pattern>
     
+    // すべてのパターンのFetchRequest
+    @FetchRequest(
+        entity: Pattern.entity(),
+        sortDescriptors: [
+            NSSortDescriptor(keyPath: \Pattern.isDefault, ascending: false),
+            NSSortDescriptor(keyPath: \Pattern.name, ascending: true)
+        ],
+        animation: .default)
+    private var allPatterns: FetchedResults<Pattern>
+    
     // 日付選択
     @State private var selectedDate = Date()
     
@@ -34,6 +44,8 @@ struct SpecialScheduleView: View {
     // カスタム設定
     @State private var customMapping: String = ""
     @State private var customPatternName: String = ""
+    @State private var selectedBasePatternName: String = ""  // カスタムモードでのベースパターン
+    @State private var useCustomMapping: Bool = false  // カスタム設定を使用するかどうか
     
     // カレンダー選択
     @State private var selectedCalendar: EKCalendar?
@@ -83,6 +95,7 @@ struct SpecialScheduleView: View {
                 .pickerStyle(SegmentedPickerStyle())
                 
                 if selectedPatternType == "パターン" {
+                    // パターンモードではデフォルト以外のパターンを選択
                     Picker("パターン", selection: $selectedPatternName) {
                         // CoreDataのパターン名をリスト
                         ForEach(patterns.map { $0.name ?? "" }, id: \.self) { name in
@@ -95,22 +108,36 @@ struct SpecialScheduleView: View {
                         Text("パターンを選択してください")
                             .foregroundColor(.secondary)
                     }
-                } else if selectedPatternType == "カスタム" {
+                } else {
+                    // カスタムモードではすべてのパターンを選択可能
+                    Picker("ベースパターン", selection: $selectedBasePatternName) {
+                        Text("選択なし").tag("")
+                        ForEach(allPatterns.map { $0.name ?? "" }, id: \.self) { name in
+                            Text(name).tag(name)
+                        }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                    
                     TextField("カスタムパターン名", text: $customPatternName)
                         .font(.system(.body, design: .default))
                     
-                    TextField("カスタム設定 (例: 月12345 → 月123金45)", text: $customMapping)
-                        .font(.system(.body, design: .monospaced))
+                    Toggle("カスタム設定を使用", isOn: $useCustomMapping)
+                        .toggleStyle(SwitchToggleStyle())
                     
-                    Text("書式: 元曜日+時限 → 先曜日+時限")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("例1: 月12345 → 月123水45 (月曜1-5限を月曜1-3限と水曜4-5限に配置)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("例2: 金12345 → 金1234 (金曜の5限を省略)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    if useCustomMapping {
+                        TextField("カスタム設定 (例: 月12345 → 月123金45)", text: $customMapping)
+                            .font(.system(.body, design: .monospaced))
+                        
+                        Text("書式: 元曜日+時限 → 先曜日+時限")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text("例1: 月12345 → 月123水45 (月曜1-5限を月曜1-3限と水曜4-5限に配置)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text("例2: 金12345 → 金1234 (金曜の5限を省略)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             
@@ -297,28 +324,52 @@ struct SpecialScheduleView: View {
         if selectedPatternType == "パターン" {
             patternName = selectedPatternName
         } else {
-            // カスタム設定の場合は、名前と設定を結合
+            // カスタムモードの場合
             if !customPatternName.isEmpty {
+                // カスタム名がある場合はそれを使用
                 patternName = customPatternName
+            } else if !selectedBasePatternName.isEmpty {
+                // ベースパターンが選択されている場合はそれを使用
+                patternName = selectedBasePatternName
             } else {
-                patternName = "カスタム: " + customMapping
+                // どちらもない場合はデフォルト名
+                patternName = "カスタム設定"
             }
         }
         
-        // カスタム設定の場合は、パターン名に設定内容を含める
-        let eventPatternName: String
-        if selectedPatternType == "カスタム" && !customMapping.isEmpty {
-            eventPatternName = patternName + " (" + customMapping + ")"
-        } else {
-            eventPatternName = patternName
+        // カスタム設定を含めたイベント名の構築
+        var eventPatternName = patternName
+        
+        // カスタムマッピングがあれば追加
+        if selectedPatternType == "カスタム" && useCustomMapping && !customMapping.isEmpty {
+            eventPatternName += " (" + customMapping + ")"
+        }
+        
+        // ベースパターンがあればそれも追加
+        if selectedPatternType == "カスタム" && !selectedBasePatternName.isEmpty && customPatternName != selectedBasePatternName {
+            if !customPatternName.isEmpty {
+                eventPatternName += " (ベース: " + selectedBasePatternName + ")"
+            }
         }
         
         // カレンダーにイベントを追加
-        CalendarManager.shared.createScheduleEvent(patternName: eventPatternName, date: selectedDate) { success, error in
+        CalendarManager.shared.createScheduleEvent(
+            patternName: eventPatternName, 
+            date: selectedDate,
+            calendar: selectedCalendar
+        ) { success, error in
             if success {
                 // 特殊時程パターンを適用
                 DispatchQueue.main.async {
-                    let applyResult = SpecialScheduleManager.shared.applySpecialSchedule(for: self.selectedDate, context: self.viewContext)
+                    // カスタムマッピングがある場合はSpecialScheduleManagerに渡す
+                    let mappingToApply = (self.selectedPatternType == "カスタム" && self.useCustomMapping) ? self.customMapping : nil
+                    
+                    let applyResult = SpecialScheduleManager.shared.applySpecialSchedule(
+                        for: self.selectedDate,
+                        context: self.viewContext,
+                        customMapping: mappingToApply,
+                        basePatternName: self.selectedBasePatternName
+                    )
                     
                     if applyResult {
                         self.message = "特殊時程を適用しました"

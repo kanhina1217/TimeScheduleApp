@@ -281,6 +281,31 @@ class SpecialScheduleManager {
         return true
     }
     
+    // 特殊時程に基づいて時間割データを適用（カスタムマッピングとベースパターン名指定版）
+    func applySpecialSchedule(for date: Date, context: NSManagedObjectContext, customMapping: String? = nil, basePatternName: String? = nil) -> Bool {
+        // カスタムマッピングが指定されている場合
+        if let mapping = customMapping, !mapping.isEmpty {
+            // カスタムマッピングを解析
+            let configs = parseCustomConfig(patternName: mapping, forWeekday: getWeekdayIndex(for: date))
+            
+            if !configs.isEmpty {
+                // 特殊時程の情報を臨時データとして保存
+                saveSpecialScheduleData(for: date, configs: configs, context: context)
+                return true
+            }
+        }
+        
+        // カスタムマッピングがない場合は通常の特殊時程を適用
+        return applySpecialSchedule(for: date, context: context)
+    }
+    
+    // 日付から曜日インデックスを取得（0=月曜、1=火曜...）
+    private func getWeekdayIndex(for date: Date) -> Int {
+        let calendar = Calendar.current
+        let weekday = calendar.component(.weekday, from: date) - 1 // 曜日インデックス（0=日曜）
+        return (weekday + 6) % 7 // 日本式曜日インデックス（0=月曜）
+    }
+    
     // 特殊時程のマッピング情報を保存
     private func saveSpecialScheduleData(for date: Date, configs: [PeriodReorderConfig], context: NSManagedObjectContext) {
         // 同じ日付の既存データを削除
