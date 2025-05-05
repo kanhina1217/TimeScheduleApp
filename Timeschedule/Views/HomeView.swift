@@ -87,8 +87,11 @@ struct HomeView: View {
 // 1日の時間割を表示するカードView
 struct TodayScheduleCard: View {
     let date: Date
+    @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest private var timetables: FetchedResults<Timetable>
+    @State private var specialTimetables: [NSManagedObject] = []
     @State private var patternName: String = "通常"
+    @State private var isSpecialSchedule: Bool = false
     
     init(date: Date) {
         self.date = date
@@ -100,16 +103,13 @@ struct TodayScheduleCard: View {
         // 月曜(2)→1, 火曜(3)→2, ..., 日曜(1)→7
         let japaneseWeekday = weekday == 1 ? 7 : weekday - 1
         
-        // 当日の時間割を取得
+        // 当日の時間割を取得（特殊時程がない場合のデフォルト）
         _timetables = FetchRequest(
             sortDescriptors: [
                 NSSortDescriptor(keyPath: \Timetable.period, ascending: true)
             ],
             predicate: NSPredicate(format: "dayOfWeek == %d", japaneseWeekday)
         )
-        
-        // 特殊時程を確認（本来はカレンダーから取得するロジックが必要）
-        // ここでは簡易的に実装
     }
     
     var body: some View {
@@ -123,15 +123,31 @@ struct TodayScheduleCard: View {
             }
             .padding(.horizontal)
             
-            // 時間割リスト
-            if timetables.isEmpty {
-                Text("授業はありません")
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
+            // 時間割リスト - 特殊時程がある場合はそちらを表示
+            if isSpecialSchedule {
+                if specialTimetables.isEmpty {
+                    Text("授業はありません")
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding()
+                } else {
+                    ForEach(specialTimetables.indices, id: \.self) { index in
+                        if let timetable = specialTimetables[index] as? Timetable {
+                            TimetableRow(timetable: timetable)
+                        }
+                    }
+                }
             } else {
-                ForEach(timetables) { timetable in
-                    TimetableRow(timetable: timetable)
+                // 通常の時間割を表示
+                if timetables.isEmpty {
+                    Text("授業はありません")
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding()
+                } else {
+                    ForEach(timetables) { timetable in
+                        TimetableRow(timetable: timetable)
+                    }
                 }
             }
         }
@@ -139,7 +155,7 @@ struct TodayScheduleCard: View {
         .cornerRadius(12)
         .padding(.horizontal)
         .onAppear {
-            // カレンダーから特殊時程を取得する処理（実際の実装では必要）
+            // カレンダーから特殊時程を取得
             checkSpecialSchedule()
         }
     }
@@ -178,6 +194,10 @@ struct TodayScheduleCard: View {
         if let specialSchedule = CalendarManager.shared.getSpecialScheduleForDate(date) {
             // パターン名を設定
             patternName = specialSchedule.patternName
+            
+            // 特殊時程の時間割データを取得
+            specialTimetables = SpecialScheduleManager.shared.getTimetableDataForSpecialSchedule(date: date, context: context)
+            isSpecialSchedule = !specialTimetables.isEmpty
         } else {
             // 特殊時程がなければデフォルトパターンの名前を表示
             let fetchRequest: NSFetchRequest<Pattern> = Pattern.fetchRequest()
@@ -195,6 +215,9 @@ struct TodayScheduleCard: View {
                 print("デフォルトパターンの取得に失敗しました: \(error)")
                 patternName = "通常時程"
             }
+            
+            // 特殊時程フラグをリセット
+            isSpecialSchedule = false
         }
     }
 }
