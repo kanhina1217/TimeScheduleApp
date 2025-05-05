@@ -90,8 +90,13 @@ struct TodayScheduleCard: View {
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest private var timetables: FetchedResults<Timetable>
     @State private var specialTimetables: [NSManagedObject] = []
+    @State private var specialScheduleConfigs: [SpecialScheduleManager.PeriodReorderConfig] = []
     @State private var patternName: String = "通常"
     @State private var isSpecialSchedule: Bool = false
+    @State private var basePattern: Pattern? = nil
+    
+    // 1-5限の固定配列
+    private let periods = [1, 2, 3, 4, 5]
     
     init(date: Date) {
         self.date = date
@@ -123,30 +128,31 @@ struct TodayScheduleCard: View {
             }
             .padding(.horizontal)
             
-            // 時間割リスト - 特殊時程がある場合はそちらを表示
-            if isSpecialSchedule {
-                if specialTimetables.isEmpty {
-                    Text("授業はありません")
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding()
-                } else {
-                    ForEach(specialTimetables.indices, id: \.self) { index in
-                        if let timetable = specialTimetables[index] as? Timetable {
-                            TimetableRow(timetable: timetable)
-                        }
+            // 時間割リスト - 常に1-5限を表示
+            ForEach(periods, id: \.self) { period in
+                if isSpecialSchedule {
+                    // 特殊時程の場合
+                    if let timetableForPeriod = findSpecialTimetable(forPeriod: period) {
+                        TimetableRowWithOriginalInfo(
+                            timetable: timetableForPeriod,
+                            pattern: basePattern,
+                            originalInfo: findOriginalInfo(forPeriod: period)
+                        )
+                    } else {
+                        EmptyTimetableRow(
+                            period: period,
+                            pattern: basePattern
+                        )
                     }
-                }
-            } else {
-                // 通常の時間割を表示
-                if timetables.isEmpty {
-                    Text("授業はありません")
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding()
                 } else {
-                    ForEach(timetables) { timetable in
+                    // 通常時程の場合
+                    if let timetable = findTimetable(forPeriod: period) {
                         TimetableRow(timetable: timetable)
+                    } else {
+                        EmptyTimetableRow(
+                            period: period,
+                            pattern: findDefaultPattern()
+                        )
                     }
                 }
             }
@@ -157,6 +163,100 @@ struct TodayScheduleCard: View {
         .onAppear {
             // カレンダーから特殊時程を取得
             checkSpecialSchedule()
+        }
+    }
+    
+    // 特殊時程の確認
+    func checkSpecialSchedule() {
+        // 環境オブジェクトからContext取得
+        let context = PersistenceController.shared.container.viewContext
+        
+        // カレンダーから特殊時程を取得
+        if let specialSchedule = CalendarManager.shared.getSpecialScheduleForDate(date) {
+            // パターン名を設定
+            patternName = specialSchedule.patternName
+            
+            // 特殊時程の時間割データを取得
+            specialTimetables = SpecialScheduleManager.shared.getTimetableDataForSpecialSchedule(date: date, context: context)
+            
+            // 特殊時程の設定情報を取得（元の時程情報を表示するため）
+            specialScheduleConfigs = SpecialScheduleManager.shared.getSpecialScheduleData(for: date, context: context)
+            
+            // ベースとなるパターンを取得
+            basePattern = findDefaultPattern()
+            
+            isSpecialSchedule = !specialTimetables.isEmpty
+        } else {
+            // 特殊時程がなければデフォルトパターンの名前を表示
+            let fetchRequest: NSFetchRequest<Pattern> = Pattern.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "isDefault == %@", NSNumber(value: true))
+            fetchRequest.fetchLimit = 1
+            
+            do {
+                let results = try context.fetch(fetchRequest)
+                if let defaultPattern = results.first {
+                    patternName = defaultPattern.name ?? "通常時程"
+                    basePattern = defaultPattern
+                } else {
+                    patternName = "通常時程"
+                    basePattern = nil
+                }
+            } catch {
+                print("デフォルトパターンの取得に失敗しました: \(error)")
+                patternName = "通常時程"
+                basePattern = nil
+            }
+            
+            // 特殊時程フラグをリセット
+            isSpecialSchedule = false
+        }
+    }
+    
+    // 指定した限数の時間割を取得（通常時程用）
+    private func findTimetable(forPeriod: Int) -> Timetable? {
+        return timetables.first { Int($0.period) == forPeriod }
+    }
+    
+    // 指定した限数の時間割を取得（特殊時程用）
+    private func findSpecialTimetable(forPeriod: Int) -> Timetable? {
+        return specialTimetables.first { 
+            ($0 as? Timetable)?.period == forPeriod 
+        } as? Timetable
+    }
+    
+    // 元の時程情報を取得（特殊時程用）
+    private func findOriginalInfo(forPeriod: Int) -> String? {
+        // 特殊時程の設定から対象の時限に該当する情報を検索
+        for config in specialScheduleConfigs {
+            let targetIndex = config.targetPeriods.firstIndex(of: forPeriod)
+            if let index = targetIndex {
+                if index < config.originalPeriods.count {
+                    let originalPeriod = config.originalPeriods[index]
+                    let originalDay = config.originalDay
+                    
+                    // 曜日を日本語表記に変換（0=月、1=火...）
+                    let days = ["月", "火", "水", "木", "金", "土", "日"]
+                    if originalDay >= 0 && originalDay < days.count {
+                        return "（\(days[originalDay])\(originalPeriod)）"
+                    }
+                }
+            }
+        }
+        return nil
+    }
+    
+    // デフォルトパターンを取得
+    private func findDefaultPattern() -> Pattern? {
+        let fetchRequest: NSFetchRequest<Pattern> = Pattern.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "isDefault == %@", NSNumber(value: true))
+        fetchRequest.fetchLimit = 1
+        
+        do {
+            let results = try viewContext.fetch(fetchRequest)
+            return results.first
+        } catch {
+            print("デフォルトパターンの取得に失敗しました: \(error)")
+            return nil
         }
     }
     
@@ -184,47 +284,13 @@ struct TodayScheduleCard: View {
         default: return .green    // 平日
         }
     }
-    
-    // 特殊時程の確認
-    func checkSpecialSchedule() {
-        // 環境オブジェクトからContext取得
-        let context = PersistenceController.shared.container.viewContext
-        
-        // カレンダーから特殊時程を取得
-        if let specialSchedule = CalendarManager.shared.getSpecialScheduleForDate(date) {
-            // パターン名を設定
-            patternName = specialSchedule.patternName
-            
-            // 特殊時程の時間割データを取得
-            specialTimetables = SpecialScheduleManager.shared.getTimetableDataForSpecialSchedule(date: date, context: context)
-            isSpecialSchedule = !specialTimetables.isEmpty
-        } else {
-            // 特殊時程がなければデフォルトパターンの名前を表示
-            let fetchRequest: NSFetchRequest<Pattern> = Pattern.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "isDefault == %@", NSNumber(value: true))
-            fetchRequest.fetchLimit = 1
-            
-            do {
-                let results = try context.fetch(fetchRequest)
-                if let defaultPattern = results.first {
-                    patternName = defaultPattern.name ?? "通常時程"
-                } else {
-                    patternName = "通常時程"
-                }
-            } catch {
-                print("デフォルトパターンの取得に失敗しました: \(error)")
-                patternName = "通常時程"
-            }
-            
-            // 特殊時程フラグをリセット
-            isSpecialSchedule = false
-        }
-    }
 }
 
-// 時間割の行
-struct TimetableRow: View {
+// 時間割の行（特殊時程の元情報付き）
+struct TimetableRowWithOriginalInfo: View {
     let timetable: Timetable
+    let pattern: Pattern?
+    let originalInfo: String?
     
     var body: some View {
         HStack(alignment: .center) {
@@ -234,7 +300,7 @@ struct TimetableRow: View {
                 .frame(width: 40)
             
             // 時間（パターンから取得）
-            if let pattern = timetable.pattern {
+            if let pattern = pattern ?? timetable.pattern {
                 VStack(alignment: .center) {
                     Text(pattern.startTimeForPeriod(Int(timetable.period)))
                         .font(.caption)
@@ -259,7 +325,8 @@ struct TimetableRow: View {
             
             // 教科情報
             VStack(alignment: .leading) {
-                Text(timetable.subjectName ?? "未設定")
+                // 科目名と元の時程情報を表示
+                Text((timetable.subjectName ?? "未設定") + (originalInfo ?? ""))
                     .fontWeight(.medium)
                 
                 if let classroom = timetable.classroom, !classroom.isEmpty {
@@ -277,6 +344,58 @@ struct TimetableRow: View {
                 .fill(timetable.displayColor)
                 .frame(width: 12, height: 12)
                 .padding(.trailing, 4)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal)
+        .background(Color(UIColor.systemBackground))
+        .cornerRadius(8)
+        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .padding(.horizontal)
+    }
+}
+
+// 空の時間割行（授業がない場合）
+struct EmptyTimetableRow: View {
+    let period: Int
+    let pattern: Pattern?
+    
+    var body: some View {
+        HStack(alignment: .center) {
+            // 時限
+            Text("\(period)限")
+                .font(.headline)
+                .frame(width: 40)
+            
+            // 時間（パターンから取得）
+            if let pattern = pattern {
+                VStack(alignment: .center) {
+                    Text(pattern.startTimeForPeriod(period))
+                        .font(.caption)
+                    Text("〜")
+                        .font(.system(size: 8))
+                        .foregroundColor(.secondary)
+                    Text(pattern.endTimeForPeriod(period))
+                        .font(.caption)
+                }
+                .frame(width: 60)
+            } else {
+                Text("--:-- - --:--")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .frame(width: 60)
+            }
+            
+            // 縦線
+            Rectangle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 1, height: 36)
+            
+            // 教科情報
+            Text("授業なし")
+                .foregroundColor(.secondary)
+                .padding(.leading, 8)
+            
+            Spacer()
         }
         .padding(.vertical, 8)
         .padding(.horizontal)
